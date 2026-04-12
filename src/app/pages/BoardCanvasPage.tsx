@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
-import type { Card, ID } from '../model/types'
+import type { Card, CardItem, ID } from '../model/types'
 import { clamp, screenToWorld } from '../utils/geom'
-import { CardNode } from '../canvas/CardNode'
+import { CardNode, type CardPreview } from '../canvas/CardNode'
 import { LinkLayer } from '../canvas/LinkLayer'
 import { RightPanel } from '../canvas/RightPanel'
+
+type WorldPt = { x: number; y: number }
+
+function center(c: Card) {
+  return { x: c.x + c.w / 2, y: c.y + c.h / 2 }
+}
 
 export function BoardCanvasPage() {
   const { workspaceId, boardId } = useParams()
@@ -13,6 +19,8 @@ export function BoardCanvasPage() {
 
   const board = useAppStore((s) => (boardId ? s.boards[boardId] : undefined))
   const cardsByIdAll = useAppStore((s) => s.cards)
+  const itemsByIdAll = useAppStore((s) => s.items)
+  const commentsByIdAll = useAppStore((s) => s.comments)
   const linksByIdAll = useAppStore((s) => s.links)
   const users = useAppStore((s) => s.users)
 
@@ -39,6 +47,53 @@ export function BoardCanvasPage() {
     return Object.values(linksByIdAll).filter((l) => l.boardId === boardId)
   }, [linksByIdAll, boardId])
 
+  const byCard = useMemo(() => {
+    const items: Record<ID, CardItem[]> = {}
+    const commentsCount: Record<ID, number> = {}
+    const linkCount: Record<ID, number> = {}
+
+    for (const it of Object.values(itemsByIdAll)) {
+      ;(items[it.cardId] ??= []).push(it)
+    }
+    for (const c of Object.values(commentsByIdAll)) {
+      commentsCount[c.cardId] = (commentsCount[c.cardId] ?? 0) + 1
+    }
+    for (const l of links) {
+      linkCount[l.a] = (linkCount[l.a] ?? 0) + 1
+      linkCount[l.b] = (linkCount[l.b] ?? 0) + 1
+    }
+
+    for (const list of Object.values(items)) list.sort((a, b) => a.position - b.position)
+
+    return { items, commentsCount, linkCount }
+  }, [itemsByIdAll, commentsByIdAll, links])
+
+  const previews = useMemo(() => {
+    const out: Record<ID, CardPreview> = {}
+    for (const c of cards) {
+      const its = byCard.items[c.id] ?? []
+      const text = its.find((x) => x.type === 'text')?.content?.text ?? c.description
+      const primaryText = (text ?? '').trim().split('\n').slice(0, 3).join('\n')
+      const mediaIt = its.find((x) => x.type !== 'text')
+      const media = mediaIt
+        ? {
+            kind: mediaIt.type as 'image' | 'video' | 'file',
+            mediaId: mediaIt.content.mediaId,
+            name: mediaIt.content.name,
+          }
+        : undefined
+
+      out[c.id] = {
+        primaryText,
+        badgeItems: its.length,
+        badgeComments: byCard.commentsCount[c.id] ?? 0,
+        badgeLinks: byCard.linkCount[c.id] ?? 0,
+        media,
+      }
+    }
+    return out
+  }, [cards, byCard])
+
   const cardsById = useMemo(() => {
     const m: Record<ID, Card> = {}
     for (const c of cards) m[c.id] = c
@@ -49,16 +104,40 @@ export function BoardCanvasPage() {
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 })
   const [selectedCardId, setSelectedCardId] = useState<ID | null>(null)
 
-  const [linkMode, setLinkMode] = useState(false)
-  const [linkFrom, setLinkFrom] = useState<ID | null>(null)
+  const [spaceDown, setSpaceDown] = useState(false)
+
+  const [dragLink, setDragLink] = useState<null | { from: ID; to: WorldPt }>(null)
 
   const maxCards = 100
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setSpaceDown(true)
+        // prevent page scroll
+        e.preventDefault()
+      }
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setSpaceDown(false)
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown, { passive: false })
+    window.addEventListener('keyup', onKeyUp, { passive: false })
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
 
     const onWheel = (e: WheelEvent) => {
+      // zoom: ctrl/cmd + wheel
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const rect = el.getBoundingClientRect()
@@ -88,8 +167,7 @@ export function BoardCanvasPage() {
         redo(boardId)
       }
       if (e.key === 'Escape') {
-        setLinkMode(false)
-        setLinkFrom(null)
+        setDragLink(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -97,7 +175,6 @@ export function BoardCanvasPage() {
   }, [boardId, undo, redo])
 
   const startPan = (e: React.PointerEvent) => {
-    if (e.button !== 0) return
     const start = { x: e.clientX, y: e.clientY }
     const v0 = viewport
     const el = containerRef.current
@@ -132,8 +209,8 @@ export function BoardCanvasPage() {
         description: '',
         x: Math.round(p.x),
         y: Math.round(p.y),
-        w: 320,
-        h: 180,
+        w: 340,
+        h: 220,
         z: Date.now(),
       })
       setSelectedCardId(id)
@@ -145,25 +222,20 @@ export function BoardCanvasPage() {
     createCardAt(e.clientX, e.clientY)
   }
 
-  const onSelectCard = (id: ID) => {
-    if (!boardId) return
+  const worldPointFromEvent = (ev: { clientX: number; clientY: number }) => {
+    const el = containerRef.current
+    if (!el) return { x: 0, y: 0 }
+    const rect = el.getBoundingClientRect()
+    return screenToWorld({ x: ev.clientX, y: ev.clientY }, viewport, rect)
+  }
 
-    if (linkMode) {
-      if (!linkFrom) {
-        setLinkFrom(id)
-        setSelectedCardId(id)
-        return
-      }
-      if (linkFrom === id) return
-      withHistory(boardId, () => {
-        createLink(boardId, linkFrom, id)
-      })
-      setLinkFrom(null)
-      setSelectedCardId(id)
-      return
+  const hitCardAtWorld = (p: WorldPt): ID | null => {
+    // top-most first
+    const sorted = [...cards].sort((a, b) => b.z - a.z)
+    for (const c of sorted) {
+      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) return c.id
     }
-
-    setSelectedCardId(id)
+    return null
   }
 
   const makeDragHandlers = (cardId: ID) => {
@@ -218,8 +290,8 @@ export function BoardCanvasPage() {
           w = base.w,
           h = base.h
 
-        const minW = 200
-        const minH = 120
+        const minW = 260
+        const minH = 170
 
         if (corner.includes('r')) w = Math.max(minW, base.w + dx)
         if (corner.includes('b')) h = Math.max(minH, base.h + dy)
@@ -246,11 +318,51 @@ export function BoardCanvasPage() {
     }
   }
 
+  const startLinkDrag = (fromId: ID) => (e: React.PointerEvent) => {
+    if (!boardId || !containerRef.current) return
+    const el = containerRef.current
+    const startWorld = worldPointFromEvent(e)
+    setDragLink({ from: fromId, to: startWorld })
+
+    el.setPointerCapture(e.pointerId)
+
+    const onMove = (ev: PointerEvent) => {
+      setDragLink((cur) => {
+        if (!cur) return null
+        return { ...cur, to: worldPointFromEvent(ev) }
+      })
+    }
+
+    const onUp = (ev: PointerEvent) => {
+      el.releasePointerCapture(e.pointerId)
+      const end = worldPointFromEvent(ev)
+      const target = hitCardAtWorld(end)
+      setDragLink(null)
+      if (target && target !== fromId) {
+        withHistory(boardId, () => {
+          createLink(boardId, fromId, target)
+        })
+      }
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   if (!workspaceId || !boardId || !board) {
     return <div className="p-6">Missing board</div>
   }
 
   const me = users[useAppStore.getState().currentUserId]
+
+  const linkTempLine = dragLink
+    ? {
+        a: center(cardsById[dragLink.from]),
+        b: dragLink.to,
+      }
+    : null
 
   return (
     <div className="h-full flex">
@@ -263,24 +375,13 @@ export function BoardCanvasPage() {
 
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted">Viewer:</div>
-            <div className="flex items-center gap-2">
-              <img src={me?.avatarUrl} className="h-7 w-7 rounded-full border border-border object-cover" referrerPolicy="no-referrer" />
-            </div>
+            <img
+              src={me?.avatarUrl}
+              className="h-7 w-7 rounded-full border border-border object-cover"
+              referrerPolicy="no-referrer"
+            />
             <div className="w-px h-6 bg-border mx-2" />
 
-            <button
-              className={
-                'text-xs rounded border px-2 py-1 ' +
-                (linkMode ? 'border-brand bg-brand/20 text-text' : 'border-border text-muted hover:text-text hover:bg-white/5')
-              }
-              onClick={() => {
-                setLinkMode((v) => !v)
-                setLinkFrom(null)
-              }}
-              title="Link mode: click two cards to connect"
-            >
-              Link
-            </button>
             <button
               className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
               onClick={() => undo(boardId)}
@@ -300,7 +401,7 @@ export function BoardCanvasPage() {
               onClick={() => {
                 const el = containerRef.current
                 if (!el) return
-                createCardAt(el.getBoundingClientRect().left + 200, el.getBoundingClientRect().top + 200)
+                createCardAt(el.getBoundingClientRect().left + 220, el.getBoundingClientRect().top + 220)
               }}
               disabled={cards.length >= maxCards}
               title={cards.length >= maxCards ? 'Max 100 cards/board' : 'Create card'}
@@ -312,10 +413,17 @@ export function BoardCanvasPage() {
 
         <div
           ref={containerRef}
-          className="relative flex-1 min-h-0 overflow-hidden bg-gradient-to-br from-bg to-black"
+          className={
+            'relative flex-1 min-h-0 overflow-hidden bg-gradient-to-br from-bg to-black ' +
+            (spaceDown ? 'cursor-grab active:cursor-grabbing' : 'cursor-default')
+          }
           onPointerDown={(e) => {
+            // Space+drag pan only
+            if (spaceDown || e.button === 1) {
+              startPan(e)
+              return
+            }
             setSelectedCardId(null)
-            startPan(e)
           }}
           onDoubleClick={onCanvasDoubleClick}
         >
@@ -337,26 +445,40 @@ export function BoardCanvasPage() {
 
             <LinkLayer cards={cardsById} links={links} selectedCardId={selectedCardId} />
 
+            {/* temp link line */}
+            {linkTempLine && (
+              <svg
+                className="absolute"
+                style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}
+                viewBox="0 0 40000 40000"
+              >
+                <line
+                  x1={linkTempLine.a.x + 20000}
+                  y1={linkTempLine.a.y + 20000}
+                  x2={linkTempLine.b.x + 20000}
+                  y2={linkTempLine.b.y + 20000}
+                  stroke="rgba(168,85,247,.9)"
+                  strokeWidth={2.5}
+                />
+              </svg>
+            )}
+
             {cards.map((c) => (
               <CardNode
                 key={c.id}
                 card={c}
                 selected={c.id === selectedCardId}
-                onSelect={() => onSelectCard(c.id)}
+                preview={previews[c.id] ?? { primaryText: '', badgeItems: 0, badgeComments: 0, badgeLinks: 0 }}
+                onSelect={() => setSelectedCardId(c.id)}
                 onPointerDownDrag={makeDragHandlers(c.id)}
                 onPointerDownResize={(corner) => makeResizeHandlers(c.id, corner)}
+                onStartLink={startLinkDrag(c.id)}
               />
             ))}
-
-            {linkMode && (
-              <div className="absolute rounded border border-brand bg-brand/10 px-3 py-2 text-xs" style={{ left: 16, top: 16 }}>
-                {linkFrom ? 'Select a second card to connect.' : 'Select a first card to start linking.'}
-              </div>
-            )}
           </div>
 
           <div className="absolute bottom-3 left-3 text-[11px] text-muted rounded border border-border bg-panel/50 px-2 py-1">
-            Pan: drag empty space • Zoom: Ctrl/Cmd + wheel • Create: double-click
+            Pan: Space + drag • Zoom: Ctrl/Cmd + wheel • New card: double-click
           </div>
           <div className="absolute bottom-3 right-3 text-[11px] text-muted rounded border border-border bg-panel/50 px-2 py-1">
             Cards: {cards.length}/{maxCards}

@@ -30,6 +30,7 @@ type State = {
 
   createBoard: (workspaceId: ID, title?: string) => ID
   renameBoard: (boardId: ID, title: string) => void
+  deleteBoard: (boardId: ID) => void
 
   withHistory: (boardId: ID, fn: () => void) => void
   undo: (boardId: ID) => void
@@ -153,6 +154,33 @@ export const useAppStore = create<State>()(
       },
       renameBoard: (boardId, title) => {
         set((s) => ({ boards: { ...s.boards, [boardId]: { ...s.boards[boardId], title, updatedAt: Date.now() } } }))
+      },
+
+      deleteBoard: (boardId) => {
+        set((s) => {
+          const nextBoards = { ...s.boards }
+          delete nextBoards[boardId]
+
+          const nextCards = { ...s.cards }
+          const nextItems = { ...s.items }
+          const nextLinks = { ...s.links }
+          const nextComments = { ...s.comments }
+          const nextHistories = { ...s.histories }
+
+          const removedCardIds = new Set()
+          for (const c of Object.values(s.cards)) {
+            if (c.boardId === boardId) {
+              removedCardIds.add(c.id)
+              delete nextCards[c.id]
+            }
+          }
+          for (const it of Object.values(s.items)) if (removedCardIds.has(it.cardId)) delete nextItems[it.id]
+          for (const cm of Object.values(s.comments)) if (removedCardIds.has(cm.cardId)) delete nextComments[cm.id]
+          for (const l of Object.values(s.links)) if (l.boardId === boardId || removedCardIds.has(l.a) || removedCardIds.has(l.b)) delete nextLinks[l.id]
+          delete nextHistories[boardId]
+
+          return { boards: nextBoards, cards: nextCards, items: nextItems, links: nextLinks, comments: nextComments, histories: nextHistories }
+        })
       },
 
       withHistory: (boardId, fn) => {
