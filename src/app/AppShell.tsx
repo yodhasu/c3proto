@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useAppStore } from './store/useAppStore'
 import { AvatarStack } from './components/AvatarStack'
 
@@ -20,7 +20,7 @@ export function AppShell() {
   const ws = useAppStore((s) => (workspaceId ? s.getWorkspace(workspaceId) : undefined))
   const users = useAppStore((s) => s.users)
 
-  useMemo(() => ensureSeeded(), [ensureSeeded])
+  useEffect(() => { ensureSeeded() }, [ensureSeeded])
 
   const members = useMemo(() => {
     if (!ws) return []

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useEffect } from 'react'
 import { AppShell } from './AppShell'
 import { useAppStore } from './store/useAppStore'
 import { BoardsPage } from './pages/BoardsPage'
@@ -10,7 +10,7 @@ function BootRedirect() {
   const ensureSeeded = useAppStore((s) => s.ensureSeeded)
   const workspaces = useAppStore((s) => s.workspaces)
 
-  useMemo(() => ensureSeeded(), [ensureSeeded])
+  useEffect(() => { ensureSeeded() }, [ensureSeeded])
 
   const first = Object.keys(workspaces)[0]
   if (!first) return <div className="p-6">Seeding…</div>

@@ -22,7 +22,7 @@ export function BoardCanvasPage() {
   const undo = useAppStore((s) => s.undo)
   const redo = useAppStore((s) => s.redo)
 
-  useMemo(() => ensureSeeded(), [ensureSeeded])
+  useEffect(() => { ensureSeeded() }, [ensureSeeded])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
 
