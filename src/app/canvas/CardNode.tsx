@@ -13,6 +13,7 @@ export type CardPreview = {
 type Props = {
   card: Card
   selected: boolean
+  panMode: boolean
   preview: CardPreview
   onSelect: () => void
   onPointerDownDrag: (e: React.PointerEvent) => void
@@ -23,6 +24,7 @@ type Props = {
 export function CardNode({
   card,
   selected,
+  panMode,
   preview,
   onSelect,
   onPointerDownDrag,
@@ -34,18 +36,21 @@ export function CardNode({
   return (
     <div
       className={clsx(
-        'absolute rounded-lg border bg-panel/85 backdrop-blur',
+        'absolute rounded-lg border bg-panel/85 backdrop-blur select-none',
         selected ? 'border-brand shadow-panel' : 'border-border',
+        panMode ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing',
       )}
       style={{ left: card.x, top: card.y, width: card.w, height: card.h, zIndex: card.z }}
+      onDoubleClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => {
+        if (panMode) return
+        e.preventDefault()
         e.stopPropagation()
         onSelect()
-        // drag anywhere except resize/link handle
         onPointerDownDrag(e)
       }}
     >
-      <div className={clsx('px-3 pt-3 pb-2', selected ? '' : '')}>
+      <div className="px-3 pt-3 pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="text-sm font-semibold leading-tight truncate">{card.title || 'Untitled'}</div>
@@ -73,7 +78,7 @@ export function CardNode({
         <div className="h-full rounded-md border border-border/70 bg-black/20 overflow-hidden flex items-center justify-center">
           {preview.media ? (
             preview.media.kind === 'image' && mediaUrl ? (
-              <img src={mediaUrl} className="h-full w-full object-cover" alt={preview.media.name ?? ''} />
+              <img src={mediaUrl} className="h-full w-full object-cover" alt={preview.media.name ?? ''} draggable={false} />
             ) : preview.media.kind === 'video' ? (
               <div className="text-xs text-muted">
                 VIDEO{preview.media.name ? `: ${preview.media.name}` : ''}
@@ -84,7 +89,7 @@ export function CardNode({
               </div>
             )
           ) : (
-            <div className="text-xs text-muted">Drop media here or add text</div>
+            <div className="text-xs text-muted">Double-click empty space to add cards. Drop media via panel.</div>
           )}
         </div>
       </div>
@@ -97,6 +102,8 @@ export function CardNode({
         )}
         title="Drag to link"
         onPointerDown={(e) => {
+          if (panMode) return
+          e.preventDefault()
           e.stopPropagation()
           onSelect()
           onStartLink(e)
@@ -115,6 +122,8 @@ export function CardNode({
             c === 'br' && '-right-1 -bottom-1 cursor-nwse-resize',
           )}
           onPointerDown={(e) => {
+            if (panMode) return
+            e.preventDefault()
             e.stopPropagation()
             onSelect()
             onPointerDownResize(c)(e)

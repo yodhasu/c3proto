@@ -8,15 +8,18 @@ export function LinkLayer({
   cards,
   links,
   selectedCardId,
+  selectedLinkId,
+  onLinkClick,
 }: {
   cards: Record<ID, Card>
   links: CardLink[]
   selectedCardId?: ID | null
+  selectedLinkId?: ID | null
+  onLinkClick?: (linkId: ID) => void
 }) {
   const cardList = Object.values(cards)
   if (cardList.length === 0) return null
 
-  // compute bounds (unbounded canvas)
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -27,7 +30,6 @@ export function LinkLayer({
     maxX = Math.max(maxX, c.x + c.w)
     maxY = Math.max(maxY, c.y + c.h)
   }
-  // pad
   const pad = 800
   minX -= pad
   minY -= pad
@@ -55,6 +57,10 @@ export function LinkLayer({
         const y2 = p2.y - minY
 
         const isHot = selectedCardId && (l.a === selectedCardId || l.b === selectedCardId)
+        const isSel = selectedLinkId === l.id
+
+        const stroke = isSel ? 'rgba(168,85,247,.95)' : isHot ? 'rgba(168,85,247,.75)' : 'rgba(148,163,184,.45)'
+        const width = isSel ? 3.0 : isHot ? 2.25 : 1.5
 
         return (
           <line
@@ -63,8 +69,15 @@ export function LinkLayer({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={isHot ? 'rgba(168,85,247,.95)' : 'rgba(148,163,184,.45)'}
-            strokeWidth={isHot ? 2.5 : 1.5}
+            stroke={stroke}
+            strokeWidth={width}
+            style={{ cursor: onLinkClick ? 'pointer' : undefined }}
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="stroke"
+            onClick={(e) => {
+              e.stopPropagation()
+              onLinkClick?.(l.id)
+            }}
           />
         )
       })}

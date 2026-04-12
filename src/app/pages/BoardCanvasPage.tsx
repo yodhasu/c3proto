@@ -28,6 +28,7 @@ export function BoardCanvasPage() {
   const createCard = useAppStore((s) => s.createCard)
   const updateCard = useAppStore((s) => s.updateCard)
   const createLink = useAppStore((s) => s.createLink)
+  const deleteLink = useAppStore((s) => s.deleteLink)
   const undo = useAppStore((s) => s.undo)
   const redo = useAppStore((s) => s.redo)
 
@@ -101,8 +102,10 @@ export function BoardCanvasPage() {
   }, [cards])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const panCleanupRef = useRef<null | (() => void)>(null)
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 })
   const [selectedCardId, setSelectedCardId] = useState<ID | null>(null)
+  const [selectedLinkId, setSelectedLinkId] = useState<ID | null>(null)
 
   const [spaceDown, setSpaceDown] = useState(false)
 
@@ -168,6 +171,14 @@ export function BoardCanvasPage() {
       }
       if (e.key === 'Escape') {
         setDragLink(null)
+        setSelectedLinkId(null)
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLinkId) {
+        e.preventDefault()
+        if (confirm('Remove this link?')) {
+          withHistory(boardId, () => deleteLink(selectedLinkId))
+        }
+        setSelectedLinkId(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -175,26 +186,46 @@ export function BoardCanvasPage() {
   }, [boardId, undo, redo])
 
   const startPan = (e: React.PointerEvent) => {
-    const start = { x: e.clientX, y: e.clientY }
-    const v0 = viewport
     const el = containerRef.current
     if (!el) return
+
+    // clear any stuck listeners from previous pan
+    panCleanupRef.current?.()
+    panCleanupRef.current = null
+
+    const start = { x: e.clientX, y: e.clientY }
+    const v0 = viewport
     el.setPointerCapture(e.pointerId)
 
+    const cleanup = () => {
+      try {
+        el.releasePointerCapture(e.pointerId)
+      } catch {}
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('blur', onUp)
+      panCleanupRef.current = null
+    }
+
     const onMove = (ev: PointerEvent) => {
+      // if mouse button is no longer pressed, stop (prevents ghost-panning)
+      if (typeof ev.buttons === 'number' && ev.buttons === 0) {
+        cleanup()
+        return
+      }
       const dx = ev.clientX - start.x
       const dy = ev.clientY - start.y
       setViewport({ ...v0, x: v0.x + dx, y: v0.y + dy })
     }
 
-    const onUp = () => {
-      el.releasePointerCapture(e.pointerId)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-    }
+    const onUp = () => cleanup()
 
+    panCleanupRef.current = cleanup
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('blur', onUp)
   }
 
   const createCardAt = (clientX: number, clientY: number) => {
@@ -218,7 +249,6 @@ export function BoardCanvasPage() {
   }
 
   const onCanvasDoubleClick = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return
     createCardAt(e.clientX, e.clientY)
   }
 
@@ -443,7 +473,13 @@ export function BoardCanvasPage() {
               }}
             />
 
-            <LinkLayer cards={cardsById} links={links} selectedCardId={selectedCardId} />
+            <LinkLayer
+              cards={cardsById}
+              links={links}
+              selectedCardId={selectedCardId}
+              selectedLinkId={selectedLinkId}
+              onLinkClick={(id) => setSelectedLinkId(id)}
+            />
 
             {/* temp link line */}
             {linkTempLine && (
@@ -468,6 +504,7 @@ export function BoardCanvasPage() {
                 key={c.id}
                 card={c}
                 selected={c.id === selectedCardId}
+                panMode={spaceDown}
                 preview={previews[c.id] ?? { primaryText: '', badgeItems: 0, badgeComments: 0, badgeLinks: 0 }}
                 onSelect={() => setSelectedCardId(c.id)}
                 onPointerDownDrag={makeDragHandlers(c.id)}

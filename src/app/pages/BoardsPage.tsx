@@ -20,6 +20,22 @@ export function BoardsPage() {
 
   if (!workspaceId || !ws) return <div className="p-6">Missing workspace</div>
 
+  const boardMenu = (boardId: string, currentTitle: string) => {
+    const action = prompt('Board action: r = rename, d = delete', 'r')
+    if (!action) return
+    const a = action.trim().toLowerCase()
+    if (a === 'r') {
+      const title = prompt('Rename board', currentTitle)
+      if (!title) return
+      renameBoard(boardId, title)
+      return
+    }
+    if (a === 'd') {
+      if (!confirm('Delete this board and all its cards?')) return
+      deleteBoard(boardId)
+    }
+  }
+
   return (
     <div className="h-full p-8 overflow-auto">
       <div className="flex items-center justify-between gap-4">
@@ -50,27 +66,13 @@ export function BoardsPage() {
                 <div className="mt-1 text-lg font-semibold truncate">{b.title}</div>
                 <div className="mt-2 text-xs text-muted">Updated {new Date(b.updatedAt).toLocaleString()}</div>
               </Link>
-              <div className="flex flex-col gap-2">
-                <button
-                  className="text-[11px] rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
-                  onClick={() => {
-                    const title = prompt('Rename board', b.title)
-                    if (!title) return
-                    renameBoard(b.id, title)
-                  }}
-                >
-                  Rename
-                </button>
-                <button
-                  className="text-[11px] rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-red-200 hover:bg-red-500/20"
-                  onClick={() => {
-                    if (!confirm('Delete this board and all its cards?')) return
-                    deleteBoard(b.id)
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
+              <button
+                className="text-sm rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
+                title="Board settings"
+                onClick={() => boardMenu(b.id, b.title)}
+              >
+                ⋯
+              </button>
             </div>
           </div>
         ))}
@@ -79,7 +81,7 @@ export function BoardsPage() {
       {boards.length === 0 && <div className="mt-10 text-muted">No boards yet.</div>}
 
       <div className="mt-10 text-xs text-muted">
-        Tips: open a board, create cards, drop media into cards, and connect references to tasks with links.
+        Tips: open a board, double-click empty space to add cards. Click a link line, then press Delete to remove it.
       </div>
     </div>
   )
