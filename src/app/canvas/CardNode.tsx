@@ -7,7 +7,9 @@ export type CardPreview = {
   badgeItems: number
   badgeComments: number
   badgeLinks: number
-  media?: { kind: 'image' | 'video' | 'file'; mediaId?: ID; name?: string }
+  note: string
+  mediaThumbs: { kind: 'image' | 'video'; mediaId?: ID; name?: string }[]
+  fileThumbs: { name?: string }[]
 }
 
 type Props = {
@@ -19,6 +21,13 @@ type Props = {
   onPointerDownDrag: (e: React.PointerEvent) => void
   onPointerDownResize: (corner: 'br' | 'tr' | 'bl' | 'tl') => (e: React.PointerEvent) => void
   onStartLink: (e: React.PointerEvent) => void
+  onToggle: (section: 'text' | 'media' | 'files') => void
+}
+
+function TinyImg({ mediaId, name }: { mediaId?: ID; name?: string }) {
+  const url = useMediaUrl(mediaId)
+  if (!url) return <div className="h-9 w-9 rounded border border-border bg-black/25" />
+  return <img src={url} alt={name ?? ''} className="h-9 w-9 rounded border border-border object-cover" draggable={false} />
 }
 
 export function CardNode({
@@ -30,9 +39,8 @@ export function CardNode({
   onPointerDownDrag,
   onPointerDownResize,
   onStartLink,
+  onToggle,
 }: Props) {
-  const mediaUrl = useMediaUrl(preview.media?.mediaId)
-
   return (
     <div
       className={clsx(
@@ -75,21 +83,78 @@ export function CardNode({
       </div>
 
       <div className="px-3 pb-3" style={{ height: Math.max(0, card.h - 74) }}>
-        <div className="h-full rounded-md border border-border/70 bg-black/20 overflow-hidden flex items-center justify-center">
-          {preview.media ? (
-            preview.media.kind === 'image' && mediaUrl ? (
-              <img src={mediaUrl} className="h-full w-full object-cover" alt={preview.media.name ?? ''} draggable={false} />
-            ) : preview.media.kind === 'video' ? (
-              <div className="text-xs text-muted">
-                VIDEO{preview.media.name ? `: ${preview.media.name}` : ''}
-              </div>
-            ) : (
-              <div className="text-xs text-muted">
-                FILE{preview.media.name ? `: ${preview.media.name}` : ''}
-              </div>
-            )
+        <div className="h-full rounded-md border border-border/70 bg-black/20 overflow-hidden">
+          {/* on-card dropdowns (toggle on selected) */}
+          {selected ? (
+            <div className="h-full p-2 space-y-2">
+              <button
+                className="w-full flex items-center justify-between text-[11px] rounded border border-border bg-white/5 px-2 py-1 hover:bg-white/10"
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  onToggle('text')
+                }}
+                title="Toggle text"
+              >
+                <span className="text-muted">Text</span>
+                <span className="text-muted">{card.openText ? '▾' : '▸'}</span>
+              </button>
+              {card.openText && (
+                <div className="text-[11px] text-muted rounded border border-border bg-black/20 p-2 whitespace-pre-wrap max-h-20 overflow-auto">
+                  {preview.note || '…'}
+                </div>
+              )}
+
+              <button
+                className="w-full flex items-center justify-between text-[11px] rounded border border-border bg-white/5 px-2 py-1 hover:bg-white/10"
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  onToggle('media')
+                }}
+                title="Toggle media"
+              >
+                <span className="text-muted">Media</span>
+                <span className="text-muted">{card.openMedia ? '▾' : '▸'}</span>
+              </button>
+              {card.openMedia && (
+                <div className="flex gap-2">
+                  {preview.mediaThumbs.length === 0 ? (
+                    <div className="text-[11px] text-muted">No media</div>
+                  ) : (
+                    preview.mediaThumbs.map((m, i) => <TinyImg key={i} mediaId={m.mediaId} name={m.name} />)
+                  )}
+                </div>
+              )}
+
+              <button
+                className="w-full flex items-center justify-between text-[11px] rounded border border-border bg-white/5 px-2 py-1 hover:bg-white/10"
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  onToggle('files')
+                }}
+                title="Toggle files"
+              >
+                <span className="text-muted">Files</span>
+                <span className="text-muted">{card.openFiles ? '▾' : '▸'}</span>
+              </button>
+              {card.openFiles && (
+                <div className="space-y-1">
+                  {preview.fileThumbs.length === 0 ? (
+                    <div className="text-[11px] text-muted">No files</div>
+                  ) : (
+                    preview.fileThumbs.map((f, i) => (
+                      <div key={i} className="text-[11px] text-muted truncate">
+                        {f.name}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="text-xs text-muted">Double-click empty space to add cards. Drop media via panel.</div>
+            <div className="h-full flex items-center justify-center text-xs text-muted">Select to expand</div>
           )}
         </div>
       </div>

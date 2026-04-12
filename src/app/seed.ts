@@ -1,4 +1,13 @@
-import type { Board, Card, CardComment, CardItem, CardLink, ID, User, Workspace } from './model/types'
+import type {
+  Board,
+  Card,
+  CardComment,
+  CardItem,
+  CardLink,
+  ID,
+  User,
+  Workspace,
+} from './model/types'
 import { id } from './utils/id'
 
 export function makeSeed() {
@@ -43,27 +52,20 @@ export function makeSeed() {
       id: id('c'),
       boardId,
       title,
-      description: 'Click to edit. Drag to move. Resize from corners.',
+      description: 'Drag to move. Space+drag pans. Drag link handles to connect ideas.',
+      note: 'One text box per card. Use it for tasks or notes.',
       x,
       y,
-      w: 320,
-      h: 180,
-      z: 1,
+      w: 360,
+      h: 260,
+      z: now,
+      openText: false,
+      openMedia: false,
+      openFiles: false,
       createdAt: now,
       updatedAt: now,
     }
     cards[c.id] = c
-
-    const it: CardItem = {
-      id: id('it'),
-      cardId: c.id,
-      type: 'text',
-      position: 1,
-      content: { text: 'Notes…' },
-      createdAt: now,
-      updatedAt: now,
-    }
-    items[it.id] = it
 
     const com: CardComment = {
       id: id('cm'),

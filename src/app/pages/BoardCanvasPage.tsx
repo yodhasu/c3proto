@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import type { Card, CardItem, ID } from '../model/types'
 import { clamp, screenToWorld } from '../utils/geom'
-import { CardNode, type CardPreview } from '../canvas/CardNode'
+import { CardNode } from '../canvas/CardNode'
 import { LinkLayer } from '../canvas/LinkLayer'
 import { RightPanel } from '../canvas/RightPanel'
 import { putMedia } from '../store/media'
@@ -82,26 +82,31 @@ export function BoardCanvasPage() {
   }, [itemsByIdAll, commentsByIdAll, links])
 
   const previews = useMemo(() => {
-    const out: Record<ID, CardPreview> = {}
+    const out: Record<ID, any> = {}
     for (const c of cards) {
       const its = byCard.items[c.id] ?? []
-      const text = its.find((x) => x.type === 'text')?.content?.text ?? c.description
-      const primaryText = (text ?? '').trim().split('\n').slice(0, 3).join('\n')
-      const mediaIt = its.find((x) => x.type !== 'text')
-      const media = mediaIt
-        ? {
-            kind: mediaIt.type as 'image' | 'video' | 'file',
-            mediaId: mediaIt.content.mediaId,
-            name: mediaIt.content.name,
-          }
-        : undefined
+
+      const note = (c.note ?? '').trim()
+      const primaryText = (note || c.description || '').split('\n').slice(0, 3).join('\n')
+
+      const media = its
+        .filter((x) => x.type === 'image' || x.type === 'video')
+        .slice(0, 3)
+        .map((x) => ({ kind: x.type, mediaId: x.content.mediaId, name: x.content.name }))
+
+      const files = its
+        .filter((x) => x.type === 'file')
+        .slice(0, 3)
+        .map((x) => ({ name: x.content.name }))
 
       out[c.id] = {
         primaryText,
-        badgeItems: its.length,
+        badgeItems: its.length + (note ? 1 : 0),
         badgeComments: byCard.commentsCount[c.id] ?? 0,
         badgeLinks: byCard.linkCount[c.id] ?? 0,
-        media,
+        note,
+        mediaThumbs: media,
+        fileThumbs: files,
       }
     }
     return out
@@ -574,11 +579,20 @@ export function BoardCanvasPage() {
                 card={c}
                 selected={c.id === selectedCardId}
                 panMode={spaceDown}
-                preview={previews[c.id] ?? { primaryText: '', badgeItems: 0, badgeComments: 0, badgeLinks: 0 }}
+                preview={previews[c.id] ?? { primaryText: '', badgeItems: 0, badgeComments: 0, badgeLinks: 0, note: '', mediaThumbs: [], fileThumbs: [] }}
                 onSelect={() => setSelectedCardId(c.id)}
                 onPointerDownDrag={makeDragHandlers(c.id)}
                 onPointerDownResize={(corner) => makeResizeHandlers(c.id, corner)}
                 onStartLink={startLinkDrag(c.id)}
+                onToggle={(section) => {
+                  withHistory(boardId, () => {
+                    const cur = cardsById[c.id]
+                    if (!cur) return
+                    if (section === 'text') updateCard(c.id, { openText: !cur.openText })
+                    if (section === 'media') updateCard(c.id, { openMedia: !cur.openMedia })
+                    if (section === 'files') updateCard(c.id, { openFiles: !cur.openFiles })
+                  })
+                }}
               />
             ))}
           </div>

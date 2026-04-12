@@ -26,16 +26,27 @@ export type Card = {
   boardId: ID
   title: string
   description: string
+
+  /** Single text box content (not an item). */
+  note: string
+
+  /** Canvas position/size */
   x: number
   y: number
   w: number
   h: number
   z: number
+
+  /** On-card dropdowns */
+  openText: boolean
+  openMedia: boolean
+  openFiles: boolean
+
   createdAt: number
   updatedAt: number
 }
 
-export type CardItemType = 'text' | 'image' | 'video' | 'file'
+export type CardItemType = 'image' | 'video' | 'file'
 
 export type CardItem = {
   id: ID
@@ -43,7 +54,6 @@ export type CardItem = {
   type: CardItemType
   position: number
   content: {
-    text?: string
     mediaId?: ID
     name?: string
     mime?: string

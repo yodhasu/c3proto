@@ -38,28 +38,29 @@ function Container({
   subtitle: string
   count: number
   previews: React.ReactNode
-  onOpen: () => void
+  onOpen?: () => void
   children: React.ReactNode
 }) {
   return (
     <div className="rounded-lg border border-border bg-white/5">
-      <button
-        className="w-full px-3 py-3 flex items-center justify-between gap-3 hover:bg-white/5"
-        onClick={onOpen}
-        title="Open"
-      >
+      <div className="w-full px-3 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0 text-left">
           <div className="text-sm font-semibold">{title}</div>
           <div className="text-[11px] text-muted truncate">{subtitle}</div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex gap-1">{previews}</div>
-          <div className="text-[11px] rounded border border-border bg-white/5 px-2 py-1 text-muted">
-            {count}
-          </div>
-          <div className="text-muted">▾</div>
+          <div className="text-[11px] rounded border border-border bg-white/5 px-2 py-1 text-muted">{count}</div>
+          {onOpen && (
+            <button
+              className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
+              onClick={onOpen}
+            >
+              Open
+            </button>
+          )}
         </div>
-      </button>
+      </div>
       <div className="px-3 pb-3">{children}</div>
     </div>
   )
@@ -72,9 +73,8 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
   const users = useAppStore((s) => s.users)
 
   const updateCard = useAppStore((s) => s.updateCard)
+  const setCardNote = useAppStore((s) => s.setCardNote)
   const withHistory = useAppStore((s) => s.withHistory)
-  const addTextItem = useAppStore((s) => s.addTextItem)
-  const updateItem = useAppStore((s) => s.updateItem)
   const deleteItem = useAppStore((s) => s.deleteItem)
   const addMediaItem = useAppStore((s) => s.addMediaItem)
   const addComment = useAppStore((s) => s.addComment)
@@ -86,7 +86,6 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
       .sort((a, b) => a.position - b.position)
   }, [itemsById, cardId])
 
-  const textItems = useMemo(() => items.filter((i) => i.type === 'text'), [items])
   const mediaItems = useMemo(() => items.filter((i) => i.type === 'image' || i.type === 'video'), [items])
   const fileItems = useMemo(() => items.filter((i) => i.type === 'file'), [items])
 
@@ -97,10 +96,8 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
   }, [commentsById, cardId])
 
   const [commentDraft, setCommentDraft] = useState('')
+  const [modal, setModal] = useState<null | 'media' | 'file'>(null)
 
-  const [modal, setModal] = useState<null | 'text' | 'media' | 'file'>(null)
-
-  const textDraftRef = useRef<HTMLTextAreaElement | null>(null)
   const mediaPickerRef = useRef<HTMLInputElement | null>(null)
   const filePickerRef = useRef<HTMLInputElement | null>(null)
 
@@ -132,28 +129,11 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
     })
   }
 
-  const addText = () => {
-    const el = textDraftRef.current
-    const text = (el?.value ?? '').trim()
-    if (!text) return
-    withHistory(boardId, () => {
-      const id = addTextItem(cardId)
-      updateItem(id, { content: { text } })
-    })
-    if (el) el.value = ''
-  }
   const textPreviews = (
     <>
-      {(textItems.slice(0, 3) as CardItem[]).map((t) => (
-        <div key={t.id} className="h-10 w-10 rounded border border-border bg-black/25 p-1 text-[10px] text-muted overflow-hidden">
-          {(t.content.text ?? '…').slice(0, 14)}
-        </div>
-      ))}
-      {textItems.length === 0 && (
-        <div className="h-10 w-10 rounded border border-border bg-black/25 flex items-center justify-center text-[10px] text-muted">
-          T
-        </div>
-      )}
+      <div className="h-10 w-10 rounded border border-border bg-black/25 p-1 text-[10px] text-muted overflow-hidden">
+        {(card.note || '…').slice(0, 24)}
+      </div>
     </>
   )
 
@@ -221,22 +201,18 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
           <div className="space-y-3">
             <Container
               title="Text"
-              subtitle="Notes, tasks, checklists (prototype: plain text)"
-              count={textItems.length}
+              subtitle="One text box per card"
+              count={card.note.trim() ? 1 : 0}
               previews={textPreviews}
-              onOpen={() => setModal('text')}
             >
               <textarea
-                ref={textDraftRef}
+                value={card.note}
+                onChange={(e) => setCardNote(cardId, e.target.value)}
+                onBlur={() => withHistory(boardId, () => setCardNote(cardId, card.note))}
                 placeholder="Write a note or task…"
-                rows={3}
+                rows={4}
                 className="w-full rounded border border-border bg-white/5 px-2 py-2 text-sm outline-none focus:border-brand"
               />
-              <div className="mt-2 flex justify-end">
-                <button className="rounded bg-brand px-3 py-2 text-xs font-medium text-white hover:opacity-90" onClick={addText}>
-                  Add text
-                </button>
-              </div>
             </Container>
 
             <Container
@@ -381,49 +357,10 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
         </div>
       </div>
 
-      <Modal
-        open={modal === 'text'}
-        title={`Text items (${textItems.length})`}
-        onClose={() => setModal(null)}
-        widthClass="w-[760px]"
-      >
-        <div className="space-y-3">
-          {textItems.length === 0 && <div className="text-sm text-muted">No text items.</div>}
-          {textItems.map((it) => (
-            <div key={it.id} className="rounded border border-border bg-white/5 p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-muted">Text</div>
-                <button
-                  className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
-                  onClick={() => {
-                    if (!confirm('Delete this text item?')) return
-                    withHistory(boardId, () => deleteItem(it.id))
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-              <textarea
-                value={it.content.text ?? ''}
-                onChange={(e) => updateItem(it.id, { content: { ...it.content, text: e.target.value } })}
-                onBlur={() => withHistory(boardId, () => updateItem(it.id, { content: { ...it.content } }))}
-                rows={4}
-                className="mt-2 w-full rounded border border-border bg-transparent px-2 py-2 text-sm outline-none focus:border-brand"
-              />
-            </div>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal
-        open={modal === 'media'}
-        title={`Media items (${mediaItems.length})`}
-        onClose={() => setModal(null)}
-        widthClass="w-[860px]"
-      >
+      <Modal open={modal === 'media'} title={`Media (${mediaItems.length})`} onClose={() => setModal(null)} widthClass="w-[860px]">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {mediaItems.length === 0 && <div className="text-sm text-muted">No media items.</div>}
-          {mediaItems.map((it) => (
+          {mediaItems.map((it: CardItem) => (
             <div key={it.id} className="rounded border border-border bg-white/5 p-2">
               <div className="flex items-center justify-between">
                 <div className="text-[11px] text-muted truncate">{it.content.name ?? it.type}</div>
@@ -446,15 +383,10 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
         </div>
       </Modal>
 
-      <Modal
-        open={modal === 'file'}
-        title={`Files (${fileItems.length})`}
-        onClose={() => setModal(null)}
-        widthClass="w-[860px]"
-      >
+      <Modal open={modal === 'file'} title={`Files (${fileItems.length})`} onClose={() => setModal(null)} widthClass="w-[860px]">
         <div className="space-y-2">
           {fileItems.length === 0 && <div className="text-sm text-muted">No files.</div>}
-          {fileItems.map((it) => (
+          {fileItems.map((it: CardItem) => (
             <div key={it.id} className="rounded border border-border bg-white/5 p-2 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-sm truncate">{it.content.name ?? 'file'}</div>

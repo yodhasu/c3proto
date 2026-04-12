@@ -39,8 +39,7 @@ type State = {
   createCard: (boardId: ID, partial: Partial<Card>) => ID
   updateCard: (cardId: ID, patch: Partial<Card>) => void
   deleteCard: (cardId: ID) => void
-
-  addTextItem: (cardId: ID) => ID
+  setCardNote: (cardId: ID, note: string) => void
   addMediaItem: (cardId: ID, type: 'image' | 'video' | 'file', meta: { mediaId: ID; name: string; mime: string }) => ID
   updateItem: (itemId: ID, patch: Partial<CardItem>) => void
   deleteItem: (itemId: ID) => void
@@ -219,11 +218,14 @@ export const useAppStore = create<State>()(
           boardId,
           title: partial.title ?? 'New card',
           description: partial.description ?? '',
+          note: partial.note ?? '',
           x: partial.x ?? 0,
           y: partial.y ?? 0,
-          w: partial.w ?? 320,
-          h: partial.h ?? 180,
+          w: partial.w ?? 320,          h: partial.h ?? 180,
           z: partial.z ?? now,
+          openText: partial.openText ?? false,
+          openMedia: partial.openMedia ?? false,
+          openFiles: partial.openFiles ?? false,
           createdAt: now,
           updatedAt: now,
         }
@@ -237,6 +239,16 @@ export const useAppStore = create<State>()(
           const now = Date.now()
           return {
             cards: { ...s.cards, [cardId]: { ...c, ...patch, updatedAt: now } },
+            boards: { ...s.boards, [c.boardId]: { ...s.boards[c.boardId], updatedAt: now } },
+          }
+        })
+      },
+      setCardNote: (cardId: any, note: any) => {
+        set((s) => {
+          const c = s.cards[cardId]
+          const now = Date.now()
+          return {
+            cards: { ...s.cards, [cardId]: { ...c, note, updatedAt: now } },
             boards: { ...s.boards, [c.boardId]: { ...s.boards[c.boardId], updatedAt: now } },
           }
         })
@@ -257,13 +269,6 @@ export const useAppStore = create<State>()(
 
           return { cards: nextCards, items: nextItems, links: nextLinks, comments: nextComments, boards: { ...s.boards, [c.boardId]: { ...s.boards[c.boardId], updatedAt: Date.now() } } }
         })
-      },
-
-      addTextItem: (cardId) => {
-        const now = Date.now()
-        const it: CardItem = { id: id('it'), cardId, type: 'text', position: now, content: { text: '' }, createdAt: now, updatedAt: now }
-        set((s) => ({ items: { ...s.items, [it.id]: it } }))
-        return it.id
       },
 
       addMediaItem: (cardId, type, meta) => {
@@ -323,6 +328,39 @@ export const useAppStore = create<State>()(
     }),
     {
       name: 'swb:v1',
+      version: 2,
+      migrate: (persisted: any, version: number) => {
+        if (!persisted) return persisted
+        // v1 -> v2: move text items into card.note, and add openText/openMedia/openFiles flags
+        if (version < 2) {
+          const next = { ...persisted }
+          next.cards = { ...(next.cards ?? {}) }
+          next.items = { ...(next.items ?? {}) }
+
+          // init new fields
+          for (const c of (Object.values(next.cards as any) as any[])) {
+            if (c.note == null) c.note = ''
+            if (c.openText == null) c.openText = false
+            if (c.openMedia == null) c.openMedia = false
+            if (c.openFiles == null) c.openFiles = false
+          }
+
+          // if legacy text items exist, merge into note and delete them
+          for (const it of (Object.values(next.items as any) as any[])) {
+            if (it && it.type === 'text') {
+              const card = next.cards[it.cardId]
+              if (card) {
+                const txt = (it.content?.text ?? '').trim()
+                if (txt) card.note = (card.note ? card.note + '\n\n' : '') + txt
+              }
+              delete next.items[it.id]
+            }
+          }
+
+          return next
+        }
+        return persisted
+      },
       partialize: (s) => ({
         version: s.version,
         currentUserId: s.currentUserId,
