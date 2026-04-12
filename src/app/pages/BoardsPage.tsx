@@ -1,11 +1,20 @@
 import { Link, useParams } from 'react-router-dom'
+import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore'
 
 export function BoardsPage() {
   const { workspaceId } = useParams()
-  const ws = useAppStore((s) => (workspaceId ? s.getWorkspace(workspaceId) : undefined))
-  const boards = useAppStore((s) => (workspaceId ? s.listBoards(workspaceId) : []))
+
+  const ws = useAppStore((s) => (workspaceId ? s.workspaces[workspaceId] : undefined))
+  const boardsById = useAppStore((s) => s.boards)
   const createBoard = useAppStore((s) => s.createBoard)
+
+  const boards = useMemo(() => {
+    if (!workspaceId) return []
+    return Object.values(boardsById)
+      .filter((b) => b.workspaceId === workspaceId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+  }, [boardsById, workspaceId])
 
   if (!workspaceId || !ws) return <div className="p-6">Missing workspace</div>
 
@@ -17,11 +26,10 @@ export function BoardsPage() {
           <div className="mt-1 text-sm text-muted">Freeform canvas boards inside {ws.name}</div>
         </div>
         <button
-          className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           onClick={() => {
             if (boards.length >= 10) return
             const id = createBoard(workspaceId, `New board ${boards.length + 1}`)
-            // navigate via href, simplest for prototype
             window.location.href = `/w/${workspaceId}/boards/${id}`
           }}
           disabled={boards.length >= 10}
@@ -45,9 +53,7 @@ export function BoardsPage() {
         ))}
       </div>
 
-      {boards.length === 0 && (
-        <div className="mt-10 text-muted">No boards yet.</div>
-      )}
+      {boards.length === 0 && <div className="mt-10 text-muted">No boards yet.</div>}
     </div>
   )
 }

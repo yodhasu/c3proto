@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { CardItem, ID } from '../model/types'
+import type { CardComment, CardItem, ID } from '../model/types'
 import { useAppStore } from '../store/useAppStore'
 import { id as makeId } from '../utils/id'
 import { putMedia } from '../store/media'
@@ -26,11 +26,7 @@ function ItemRow({ item }: { item: CardItem }) {
         ) : item.type === 'video' ? (
           <video src={url} controls className="max-h-48 w-full rounded" />
         ) : (
-          <a
-            className="text-sm text-brand underline"
-            href={url}
-            download={item.content.name ?? 'file'}
-          >
+          <a className="text-sm text-brand underline" href={url} download={item.content.name ?? 'file'}>
             Download {item.content.name ?? 'file'}
           </a>
         )
@@ -44,8 +40,8 @@ function ItemRow({ item }: { item: CardItem }) {
 
 export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: ID; onClose: () => void }) {
   const card = useAppStore((s) => s.cards[cardId])
-  const items = useAppStore((s) => s.getCardItems(cardId))
-  const comments = useAppStore((s) => s.getCardComments(cardId))
+  const itemsById = useAppStore((s) => s.items)
+  const commentsById = useAppStore((s) => s.comments)
   const users = useAppStore((s) => s.users)
 
   const updateCard = useAppStore((s) => s.updateCard)
@@ -56,14 +52,23 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
   const addComment = useAppStore((s) => s.addComment)
   const deleteCard = useAppStore((s) => s.deleteCard)
 
+  const items = useMemo(() => {
+    return Object.values(itemsById)
+      .filter((it) => it.cardId === cardId)
+      .sort((a, b) => a.position - b.position)
+  }, [itemsById, cardId])
+
+  const comments = useMemo(() => {
+    return Object.values(commentsById)
+      .filter((cm) => cm.cardId === cardId)
+      .sort((a, b) => a.createdAt - b.createdAt)
+  }, [commentsById, cardId])
+
   const [commentDraft, setCommentDraft] = useState('')
 
-  const authorName = useMemo(() => {
-    const u = card ? users[useAppStore.getState().currentUserId] : undefined
-    return u?.name ?? 'You'
-  }, [card, users])
-
   if (!card) return null
+
+  const authorName = users[useAppStore.getState().currentUserId]?.name ?? 'You'
 
   const onUpload = async (file: File, kind: 'image' | 'video' | 'file') => {
     const mediaId = makeId('m')
@@ -139,27 +144,41 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
           <div className="mt-3 flex gap-2">
             <label className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5 cursor-pointer">
               + Image
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void onUpload(f, 'image')
-                e.currentTarget.value = ''
-              }} />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void onUpload(f, 'image')
+                  e.currentTarget.value = ''
+                }}
+              />
             </label>
             <label className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5 cursor-pointer">
               + Video
-              <input type="file" accept="video/*" className="hidden" onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void onUpload(f, 'video')
-                e.currentTarget.value = ''
-              }} />
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void onUpload(f, 'video')
+                  e.currentTarget.value = ''
+                }}
+              />
             </label>
             <label className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5 cursor-pointer">
               + File
-              <input type="file" className="hidden" onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void onUpload(f, 'file')
-                e.currentTarget.value = ''
-              }} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void onUpload(f, 'file')
+                  e.currentTarget.value = ''
+                }}
+              />
             </label>
           </div>
         </div>
@@ -167,7 +186,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
         <div>
           <div className="text-xs text-muted mb-2">Comments</div>
           <div className="space-y-2">
-            {comments.map((c) => (
+            {comments.map((c: CardComment) => (
               <div key={c.id} className="rounded border border-border bg-white/5 p-2">
                 <div className="text-[10px] text-muted">
                   {users[c.authorId]?.name ?? 'User'} • {new Date(c.createdAt).toLocaleString()}

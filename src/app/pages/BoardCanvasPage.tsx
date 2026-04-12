@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
-import type { ID } from '../model/types'
+import type { Card, ID } from '../model/types'
 import { clamp, screenToWorld } from '../utils/geom'
 import { CardNode } from '../canvas/CardNode'
 import { LinkLayer } from '../canvas/LinkLayer'
@@ -10,9 +10,10 @@ import { RightPanel } from '../canvas/RightPanel'
 export function BoardCanvasPage() {
   const { workspaceId, boardId } = useParams()
   const ensureSeeded = useAppStore((s) => s.ensureSeeded)
-  const board = useAppStore((s) => (boardId ? s.getBoard(boardId) : undefined))
-  const cards = useAppStore((s) => (boardId ? s.getBoardCards(boardId) : []))
-  const links = useAppStore((s) => (boardId ? s.getBoardLinks(boardId) : []))
+
+  const board = useAppStore((s) => (boardId ? s.boards[boardId] : undefined))
+  const cardsByIdAll = useAppStore((s) => s.cards)
+  const linksByIdAll = useAppStore((s) => s.links)
   const users = useAppStore((s) => s.users)
 
   const withHistory = useAppStore((s) => s.withHistory)
@@ -22,21 +23,34 @@ export function BoardCanvasPage() {
   const undo = useAppStore((s) => s.undo)
   const redo = useAppStore((s) => s.redo)
 
-  useEffect(() => { ensureSeeded() }, [ensureSeeded])
+  useEffect(() => {
+    ensureSeeded()
+  }, [ensureSeeded])
+
+  const cards = useMemo(() => {
+    if (!boardId) return [] as Card[]
+    return Object.values(cardsByIdAll)
+      .filter((c) => c.boardId === boardId)
+      .sort((a, b) => a.z - b.z)
+  }, [cardsByIdAll, boardId])
+
+  const links = useMemo(() => {
+    if (!boardId) return []
+    return Object.values(linksByIdAll).filter((l) => l.boardId === boardId)
+  }, [linksByIdAll, boardId])
+
+  const cardsById = useMemo(() => {
+    const m: Record<ID, Card> = {}
+    for (const c of cards) m[c.id] = c
+    return m
+  }, [cards])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
-
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 })
   const [selectedCardId, setSelectedCardId] = useState<ID | null>(null)
 
   const [linkMode, setLinkMode] = useState(false)
   const [linkFrom, setLinkFrom] = useState<ID | null>(null)
-
-  const cardsById = useMemo(() => {
-    const m: Record<ID, (typeof cards)[number]> = {}
-    for (const c of cards) m[c.id] = c
-    return m
-  }, [cards])
 
   const maxCards = 100
 
@@ -45,17 +59,14 @@ export function BoardCanvasPage() {
     if (!el) return
 
     const onWheel = (e: WheelEvent) => {
-      // zoom
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const rect = el.getBoundingClientRect()
       const mouse = { x: e.clientX, y: e.clientY }
       const before = screenToWorld(mouse, viewport, rect)
       const nextScale = clamp(viewport.scale * (e.deltaY > 0 ? 0.9 : 1.1), 0.25, 2.5)
-      const after = before
-      // adjust viewport so the point under cursor stays
-      const nextX = viewport.x + (after.x * viewport.scale - after.x * nextScale)
-      const nextY = viewport.y + (after.y * viewport.scale - after.y * nextScale)
+      const nextX = viewport.x + (before.x * viewport.scale - before.x * nextScale)
+      const nextY = viewport.y + (before.y * viewport.scale - before.y * nextScale)
       setViewport({ x: nextX, y: nextY, scale: nextScale })
     }
 
@@ -164,7 +175,6 @@ export function BoardCanvasPage() {
       const start = { x: e.clientX, y: e.clientY }
       const base = { x: c0.x, y: c0.y }
 
-      // push undo once
       withHistory(boardId, () => {
         updateCard(cardId, { z: Date.now() })
       })
@@ -286,7 +296,7 @@ export function BoardCanvasPage() {
               Redo
             </button>
             <button
-              className="text-xs rounded bg-brand px-2 py-1 text-white hover:opacity-90"
+              className="text-xs rounded bg-brand px-2 py-1 text-white hover:opacity-90 disabled:opacity-50"
               onClick={() => {
                 const el = containerRef.current
                 if (!el) return
@@ -309,12 +319,10 @@ export function BoardCanvasPage() {
           }}
           onDoubleClick={onCanvasDoubleClick}
         >
-          {/* world */}
           <div
             className="absolute left-0 top-0 origin-top-left"
             style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
           >
-            {/* subtle grid */}
             <div
               className="absolute"
               style={{
@@ -322,8 +330,7 @@ export function BoardCanvasPage() {
                 top: -20000,
                 width: 40000,
                 height: 40000,
-                backgroundImage:
-                  'radial-gradient(rgba(148,163,184,.12) 1px, transparent 1px)',
+                backgroundImage: 'radial-gradient(rgba(148,163,184,.12) 1px, transparent 1px)',
                 backgroundSize: '28px 28px',
               }}
             />
@@ -341,18 +348,13 @@ export function BoardCanvasPage() {
               />
             ))}
 
-            {/* link mode hint */}
             {linkMode && (
-              <div
-                className="absolute rounded border border-brand bg-brand/10 px-3 py-2 text-xs"
-                style={{ left: 16, top: 16 }}
-              >
+              <div className="absolute rounded border border-brand bg-brand/10 px-3 py-2 text-xs" style={{ left: 16, top: 16 }}>
                 {linkFrom ? 'Select a second card to connect.' : 'Select a first card to start linking.'}
               </div>
             )}
           </div>
 
-          {/* footer hints */}
           <div className="absolute bottom-3 left-3 text-[11px] text-muted rounded border border-border bg-panel/50 px-2 py-1">
             Pan: drag empty space • Zoom: Ctrl/Cmd + wheel • Create: double-click
           </div>
@@ -362,13 +364,7 @@ export function BoardCanvasPage() {
         </div>
       </div>
 
-      {selectedCardId && (
-        <RightPanel
-          boardId={boardId}
-          cardId={selectedCardId}
-          onClose={() => setSelectedCardId(null)}
-        />
-      )}
+      {selectedCardId && <RightPanel boardId={boardId} cardId={selectedCardId} onClose={() => setSelectedCardId(null)} />}
     </div>
   )
 }
