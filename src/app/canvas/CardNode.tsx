@@ -36,7 +36,7 @@ export function CardNode({
   return (
     <div
       className={clsx(
-        'absolute rounded-lg border bg-panel/85 backdrop-blur select-none',
+        'absolute rounded-lg border bg-panel/85 backdrop-blur select-none group',
         selected ? 'border-brand shadow-panel' : 'border-border',
         panMode ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing',
       )}
@@ -94,21 +94,31 @@ export function CardNode({
         </div>
       </div>
 
-      {/* link handle */}
-      <button
-        className={clsx(
-          'absolute -right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border',
-          selected ? 'border-brand bg-brand/20' : 'border-border bg-panel',
-        )}
-        title="Drag to link"
-        onPointerDown={(e) => {
-          if (panMode) return
-          e.preventDefault()
-          e.stopPropagation()
-          onSelect()
-          onStartLink(e)
-        }}
-      />
+      {/* link handles (hover) */}
+      {([
+        { k: 'r', cls: '-right-2 top-1/2 -translate-y-1/2' },
+        { k: 'l', cls: '-left-2 top-1/2 -translate-y-1/2' },
+        { k: 't', cls: 'left-1/2 -translate-x-1/2 -top-2' },
+        { k: 'b', cls: 'left-1/2 -translate-x-1/2 -bottom-2' },
+      ] as const).map((h) => (
+        <button
+          key={h.k}
+          className={clsx(
+            'absolute h-5 w-5 rounded-full border transition-opacity',
+            h.cls,
+            'opacity-0 group-hover:opacity-100',
+            selected ? 'border-brand bg-brand/20' : 'border-border bg-panel',
+          )}
+          title="Drag to link"
+          onPointerDown={(e) => {
+            if (panMode) return
+            e.preventDefault()
+            e.stopPropagation()
+            onSelect()
+            onStartLink(e)
+          }}
+        />
+      ))}
 
       {/* resize handles */}
       {(['tl', 'tr', 'bl', 'br'] as const).map((c) => (

@@ -6,11 +6,22 @@ import { clamp, screenToWorld } from '../utils/geom'
 import { CardNode, type CardPreview } from '../canvas/CardNode'
 import { LinkLayer } from '../canvas/LinkLayer'
 import { RightPanel } from '../canvas/RightPanel'
+import { putMedia } from '../store/media'
+import { id as makeId } from '../utils/id'
 
 type WorldPt = { x: number; y: number }
 
 function center(c: Card) {
   return { x: c.x + c.w / 2, y: c.y + c.h / 2 }
+}
+
+function isEditableTarget(t: EventTarget | null) {
+  const el = t as HTMLElement | null
+  if (!el) return false
+  const tag = el.tagName?.toLowerCase()
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true
+  if (el.isContentEditable) return true
+  return false
 }
 
 export function BoardCanvasPage() {
@@ -26,6 +37,7 @@ export function BoardCanvasPage() {
 
   const withHistory = useAppStore((s) => s.withHistory)
   const createCard = useAppStore((s) => s.createCard)
+  const addMediaItem = useAppStore((s) => s.addMediaItem)
   const updateCard = useAppStore((s) => s.updateCard)
   const createLink = useAppStore((s) => s.createLink)
   const deleteLink = useAppStore((s) => s.deleteLink)
@@ -116,14 +128,15 @@ export function BoardCanvasPage() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
+        if (isEditableTarget(e.target)) return
         setSpaceDown(true)
-        // prevent page scroll
         e.preventDefault()
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         setSpaceDown(false)
+        if (isEditableTarget(e.target)) return
         e.preventDefault()
       }
     }
@@ -372,6 +385,23 @@ export function BoardCanvasPage() {
         withHistory(boardId, () => {
           createLink(boardId, fromId, target)
         })
+      } else {
+        // auto-create a card when dropped on empty space
+        if (cards.length < maxCards) {
+          withHistory(boardId, () => {
+            const newId = createCard(boardId, {
+              title: 'New card',
+              description: '',
+              x: Math.round(end.x),
+              y: Math.round(end.y),
+              w: 340,
+              h: 220,
+              z: Date.now(),
+            })
+            createLink(boardId, fromId, newId)
+            setSelectedCardId(newId)
+          })
+        }
       }
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
@@ -443,6 +473,45 @@ export function BoardCanvasPage() {
 
         <div
           ref={containerRef}
+          onDragOver={(e) => {
+            e.preventDefault()
+          }}
+          onDrop={async (e) => {
+            e.preventDefault()
+            if (!boardId) return
+            const files = Array.from(e.dataTransfer.files ?? [])
+            if (files.length === 0) return
+            const drop = { clientX: e.clientX, clientY: e.clientY }
+            const base = worldPointFromEvent(drop)
+
+            // create up to remaining capacity
+            const remaining = Math.max(0, maxCards - cards.length)
+            const use = files.slice(0, remaining)
+
+            for (let i = 0; i < use.length; i++) {
+              const f = use[i]
+              const mediaId = makeId('m')
+              await putMedia(mediaId, f)
+
+              const kind = f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'file'
+              const x = Math.round(base.x + i * 40)
+              const y = Math.round(base.y + i * 40)
+
+              withHistory(boardId, () => {
+                const newId = createCard(boardId, {
+                  title: f.name,
+                  description: '',
+                  x,
+                  y,
+                  w: 360,
+                  h: 260,
+                  z: Date.now(),
+                })
+                addMediaItem(newId, kind as any, { mediaId, name: f.name, mime: f.type || 'application/octet-stream' })
+                setSelectedCardId(newId)
+              })
+            }
+          }}
           className={
             'relative flex-1 min-h-0 overflow-hidden bg-gradient-to-br from-bg to-black ' +
             (spaceDown ? 'cursor-grab active:cursor-grabbing' : 'cursor-default')

@@ -5,34 +5,36 @@ import { id as makeId } from '../utils/id'
 import { putMedia } from '../store/media'
 import { useMediaUrl } from './useMediaUrl'
 
-function ItemRow({ item }: { item: CardItem }) {
+function MediaItem({ item, onDelete }: { item: CardItem; onDelete: () => void }) {
   const url = useMediaUrl(item.content.mediaId)
-
-  if (item.type === 'text') {
-    return (
-      <div className="rounded border border-border bg-white/5 p-2">
-        <div className="text-[10px] text-muted mb-1">Text</div>
-        <div className="text-sm whitespace-pre-wrap break-words">{item.content.text || '…'}</div>
-      </div>
-    )
-  }
 
   return (
     <div className="rounded border border-border bg-white/5 p-2">
-      <div className="text-[10px] text-muted mb-2">{item.type.toUpperCase()}</div>
-      {url ? (
-        item.type === 'image' ? (
-          <img src={url} className="max-h-48 w-full object-contain rounded" />
-        ) : item.type === 'video' ? (
-          <video src={url} controls className="max-h-48 w-full rounded" />
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] text-muted">{item.type.toUpperCase()}</div>
+        <button
+          className="text-[10px] rounded border border-border px-2 py-0.5 text-muted hover:text-text hover:bg-white/5"
+          onClick={onDelete}
+          title="Delete item"
+        >
+          Delete
+        </button>
+      </div>
+      <div className="mt-2">
+        {url ? (
+          item.type === 'image' ? (
+            <img src={url} className="max-h-48 w-full object-contain rounded" alt="" />
+          ) : item.type === 'video' ? (
+            <video src={url} controls className="max-h-48 w-full rounded" />
+          ) : (
+            <a className="text-sm text-brand underline" href={url} download={item.content.name ?? 'file'}>
+              Download {item.content.name ?? 'file'}
+            </a>
+          )
         ) : (
-          <a className="text-sm text-brand underline" href={url} download={item.content.name ?? 'file'}>
-            Download {item.content.name ?? 'file'}
-          </a>
-        )
-      ) : (
-        <div className="text-xs text-muted">(media missing)</div>
-      )}
+          <div className="text-xs text-muted">(media missing)</div>
+        )}
+      </div>
       <div className="mt-2 text-xs text-muted truncate">{item.content.name}</div>
     </div>
   )
@@ -48,6 +50,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
   const withHistory = useAppStore((s) => s.withHistory)
   const addTextItem = useAppStore((s) => s.addTextItem)
   const updateItem = useAppStore((s) => s.updateItem)
+  const deleteItem = useAppStore((s) => s.deleteItem)
   const addMediaItem = useAppStore((s) => s.addMediaItem)
   const addComment = useAppStore((s) => s.addComment)
   const deleteCard = useAppStore((s) => s.deleteCard)
@@ -119,22 +122,40 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
               + Text
             </button>
           </div>
+
           <div className="mt-3 space-y-2">
             {items.map((it) => (
               <div key={it.id}>
                 {it.type === 'text' ? (
                   <div className="rounded border border-border bg-white/5 p-2">
-                    <div className="text-[10px] text-muted mb-1">Text</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] text-muted">Text</div>
+                      <button
+                        className="text-[10px] rounded border border-border px-2 py-0.5 text-muted hover:text-text hover:bg-white/5"
+                        onClick={() => {
+                          if (!confirm('Delete this text item?')) return
+                          withHistory(boardId, () => deleteItem(it.id))
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                     <textarea
                       value={it.content.text ?? ''}
                       onChange={(e) => updateItem(it.id, { content: { ...it.content, text: e.target.value } })}
                       onBlur={() => withHistory(boardId, () => updateItem(it.id, { content: { ...it.content } }))}
                       rows={3}
-                      className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
+                      className="w-full mt-2 rounded border border-border bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
                     />
                   </div>
                 ) : (
-                  <ItemRow item={it} />
+                  <MediaItem
+                    item={it}
+                    onDelete={() => {
+                      if (!confirm('Delete this item?')) return
+                      withHistory(boardId, () => deleteItem(it.id))
+                    }}
+                  />
                 )}
               </div>
             ))}
