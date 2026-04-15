@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Board, BoardSnapshot, Card, CardComment, CardItem, CardLink, ID, User, Workspace } from '../model/types'
+import type { Board, BoardSnapshot, Card, CardComment, CardItem, CardLink, ID, User, Workspace, ScheduleItem, Transaction } from '../model/types'
 import { makeSeed } from '../seed'
 import { id } from '../utils/id'
 
@@ -16,6 +16,8 @@ type State = {
   items: Record<ID, CardItem>
   links: Record<ID, CardLink>
   comments: Record<ID, CardComment>
+  scheduleItems: Record<ID, ScheduleItem>
+  transactions: Record<ID, Transaction>
   histories: Record<ID, BoardHistory>
 
   ensureSeeded: () => void
@@ -28,7 +30,7 @@ type State = {
   getCardComments: (cardId: ID) => CardComment[]
   getBoardLinks: (boardId: ID) => CardLink[]
 
-  createBoard: (workspaceId: ID, title?: string) => ID
+  createBoard: (workspaceId: ID, title?: string, color?: string) => ID
   renameBoard: (boardId: ID, title: string) => void
   deleteBoard: (boardId: ID) => void
 
@@ -47,7 +49,17 @@ type State = {
   addComment: (cardId: ID, body: string) => ID
 
   createLink: (boardId: ID, a: ID, b: ID) => ID
+  updateLink: (linkId: ID, updates: Partial<CardLink>) => void
   deleteLink: (linkId: ID) => void
+
+  // Scheduling
+  createScheduleItem: (workspaceId: ID, partial: Partial<ScheduleItem>) => ID
+  updateScheduleItem: (itemId: ID, patch: Partial<ScheduleItem>) => void
+  deleteScheduleItem: (itemId: ID) => void
+
+  createTransaction: (workspaceId: ID, partial: Omit<Transaction, 'id' | 'workspaceId'>) => ID
+  updateTransaction: (transactionId: ID, patch: Partial<Transaction>) => void
+  deleteTransaction: (transactionId: ID) => void
 }
 
 function snapshotForBoard(state: Pick<State, 'cards' | 'items' | 'links' | 'comments'>, boardId: ID): BoardSnapshot {
@@ -118,6 +130,8 @@ export const useAppStore = create<State>()(
       items: {},
       links: {},
       comments: {},
+      scheduleItems: {},
+      transactions: {},
       histories: {},
 
       ensureSeeded: () => {
@@ -133,6 +147,8 @@ export const useAppStore = create<State>()(
           items: seed.items,
           links: seed.links,
           comments: seed.comments,
+          scheduleItems: seed.scheduleItems,
+          transactions: seed.transactions,
           histories: {},
         })
       },
@@ -145,9 +161,11 @@ export const useAppStore = create<State>()(
       getCardComments: (cardId) => Object.values(get().comments).filter((cm) => cm.cardId === cardId).sort((a, b) => a.createdAt - b.createdAt),
       getBoardLinks: (boardId) => Object.values(get().links).filter((l) => l.boardId === boardId),
 
-      createBoard: (workspaceId, title) => {
+      createBoard: (workspaceId, title, colorOverride) => {
         const now = Date.now()
-        const b: Board = { id: id('b'), workspaceId, title: title ?? 'Untitled board', createdAt: now, updatedAt: now }
+        const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899']
+        const color = colorOverride ?? colors[Math.floor(Math.random() * colors.length)]
+        const b: Board = { id: id('b'), workspaceId, title: title ?? 'Untitled board', color, createdAt: now, updatedAt: now }
         set((s) => ({ boards: { ...s.boards, [b.id]: b } }))
         return b.id
       },
@@ -164,6 +182,8 @@ export const useAppStore = create<State>()(
           const nextItems = { ...s.items }
           const nextLinks = { ...s.links }
           const nextComments = { ...s.comments }
+          const nextScheduleItems = { ...s.scheduleItems }
+          const nextTransactions = { ...s.transactions }
           const nextHistories = { ...s.histories }
 
           const removedCardIds = new Set()
@@ -176,9 +196,22 @@ export const useAppStore = create<State>()(
           for (const it of Object.values(s.items)) if (removedCardIds.has(it.cardId)) delete nextItems[it.id]
           for (const cm of Object.values(s.comments)) if (removedCardIds.has(cm.cardId)) delete nextComments[cm.id]
           for (const l of Object.values(s.links)) if (l.boardId === boardId || removedCardIds.has(l.a) || removedCardIds.has(l.b)) delete nextLinks[l.id]
+          for (const schedule of Object.values(s.scheduleItems)) if (schedule.boardId === boardId) delete nextScheduleItems[schedule.id]
+          for (const transaction of Object.values(s.transactions)) {
+            if (transaction.projectId === boardId) nextTransactions[transaction.id] = { ...transaction, projectId: undefined }
+          }
           delete nextHistories[boardId]
 
-          return { boards: nextBoards, cards: nextCards, items: nextItems, links: nextLinks, comments: nextComments, histories: nextHistories }
+          return {
+            boards: nextBoards,
+            cards: nextCards,
+            items: nextItems,
+            links: nextLinks,
+            comments: nextComments,
+            scheduleItems: nextScheduleItems,
+            transactions: nextTransactions,
+            histories: nextHistories,
+          }
         })
       },
 
@@ -325,10 +358,80 @@ export const useAppStore = create<State>()(
           return { links: next }
         })
       },
+
+      updateLink: (linkId, updates) => {
+        set((s) => {
+          const l = s.links[linkId]
+          if (!l) return s
+          return { links: { ...s.links, [linkId]: { ...l, ...updates } } }
+        })
+      },
+
+      createScheduleItem: (workspaceId, partial) => {
+        const now = Date.now()
+        const item: ScheduleItem = {
+          id: id('sch'),
+          workspaceId,
+          boardId: partial.boardId,
+          linkedCardId: partial.linkedCardId,
+          title: partial.title || 'Untitled Task',
+          note: partial.note || '',
+          startDate: partial.startDate || now,
+          endDate: partial.endDate || now,
+          status: partial.status || 'Production',
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((s) => ({ scheduleItems: { ...s.scheduleItems, [item.id]: item } }))
+        return item.id
+      },
+
+      updateScheduleItem: (itemId, patch) => {
+        const now = Date.now()
+        set((s) => ({
+          scheduleItems: {
+            ...s.scheduleItems,
+            [itemId]: { ...s.scheduleItems[itemId], ...patch, updatedAt: now },
+          },
+        }))
+      },
+
+      deleteScheduleItem: (itemId) => {
+        set((s) => {
+          const { [itemId]: _, ...remaining } = s.scheduleItems
+          return { scheduleItems: remaining }
+        })
+      },
+
+      createTransaction: (workspaceId, partial) => {
+        const transaction: Transaction = {
+          id: id('txn'),
+          workspaceId,
+          ...partial,
+        }
+        set((s) => ({ transactions: { ...s.transactions, [transaction.id]: transaction } }))
+        return transaction.id
+      },
+
+      updateTransaction: (transactionId, patch) => {
+        set((s) => ({
+          transactions: {
+            ...s.transactions,
+            [transactionId]: { ...s.transactions[transactionId], ...patch },
+          },
+        }))
+      },
+
+      deleteTransaction: (transactionId) => {
+        set((s) => {
+          const { [transactionId]: _, ...remaining } = s.transactions
+          return { transactions: remaining }
+        })
+      },
     }),
     {
       name: 'swb:v1',
-      version: 2,
+      version: 4,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         // v1 -> v2: move text items into card.note, and add openText/openMedia/openFiles flags
@@ -359,6 +462,25 @@ export const useAppStore = create<State>()(
 
           return next
         }
+        // v2 -> v3: add colors to boards
+        if (version < 3) {
+          const next = persisted ? { ...persisted } : { boards: {} }
+          next.boards = { ...(next.boards ?? {}) }
+          const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899']
+          for (const b of Object.values(next.boards as any) as any[]) {
+            if (!b.color) b.color = colors[Math.floor(Math.random() * colors.length)]
+          }
+          persisted = next
+        }
+        if (version < 4) {
+          const next = persisted ? { ...persisted } : {}
+          next.scheduleItems = { ...(next.scheduleItems ?? {}) }
+          next.transactions = { ...(next.transactions ?? {}) }
+          for (const item of Object.values(next.scheduleItems as any) as any[]) {
+            if (item && item.linkedCardId == null) item.linkedCardId = undefined
+          }
+          return next
+        }
         return persisted
       },
       partialize: (s) => ({
@@ -371,6 +493,8 @@ export const useAppStore = create<State>()(
         items: s.items,
         links: s.links,
         comments: s.comments,
+        scheduleItems: s.scheduleItems,
+        transactions: s.transactions,
         histories: s.histories,
       }),
     },

@@ -5,6 +5,7 @@ import { id as makeId } from '../utils/id'
 import { putMedia } from '../store/media'
 import { useMediaUrl } from './useMediaUrl'
 import { Modal } from '../components/Modal'
+import { ConfirmModal } from '../components/ConfirmModal'
 
 function isMediaFile(f: File) {
   return f.type.startsWith('image/') || f.type.startsWith('video/')
@@ -97,6 +98,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
 
   const [commentDraft, setCommentDraft] = useState('')
   const [modal, setModal] = useState<null | 'media' | 'file'>(null)
+  const [pendingDelete, setPendingDelete] = useState<null | { kind: 'card' | 'item'; id: ID; name?: string }>(null)
 
   const mediaPickerRef = useRef<HTMLInputElement | null>(null)
   const filePickerRef = useRef<HTMLInputElement | null>(null)
@@ -347,9 +349,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
           <button
             className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 hover:bg-red-500/20"
             onClick={() => {
-              if (!confirm('Delete this card?')) return
-              withHistory(boardId, () => deleteCard(cardId))
-              onClose()
+              setPendingDelete({ kind: 'card', id: cardId, name: card.title || 'this card' })
             }}
           >
             Delete card
@@ -367,8 +367,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
                 <button
                   className="text-[11px] rounded border border-border px-2 py-0.5 text-muted hover:text-text hover:bg-white/5"
                   onClick={() => {
-                    if (!confirm('Delete this item?')) return
-                    withHistory(boardId, () => deleteItem(it.id))
+                    setPendingDelete({ kind: 'item', id: it.id, name: it.content.name ?? it.type })
                   }}
                 >
                   Delete
@@ -395,8 +394,7 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
               <button
                 className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
                 onClick={() => {
-                  if (!confirm('Delete this file?')) return
-                  withHistory(boardId, () => deleteItem(it.id))
+                  setPendingDelete({ kind: 'item', id: it.id, name: it.content.name ?? 'this file' })
                 }}
               >
                 Delete
@@ -405,6 +403,28 @@ export function RightPanel({ boardId, cardId, onClose }: { boardId: ID; cardId: 
           ))}
         </div>
       </Modal>
+      <ConfirmModal
+        open={!!pendingDelete}
+        title={pendingDelete?.kind === 'card' ? 'Delete this card?' : 'Delete this attachment?'}
+        message={
+          pendingDelete?.kind === 'card'
+            ? `Delete "${pendingDelete.name ?? 'this card'}" from the board? Its notes, media, files, and comments will be removed from the workspace canvas.`
+            : `Remove "${pendingDelete?.name ?? 'this attachment'}" from this card? The rest of the card will stay intact.`
+        }
+        confirmLabel={pendingDelete?.kind === 'card' ? 'Delete Card' : 'Delete Item'}
+        tone="danger"
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          if (pendingDelete.kind === 'card') {
+            withHistory(boardId, () => deleteCard(pendingDelete.id))
+            onClose()
+          } else {
+            withHistory(boardId, () => deleteItem(pendingDelete.id))
+          }
+          setPendingDelete(null)
+        }}
+      />
     </div>
   )
 }

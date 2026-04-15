@@ -5,6 +5,8 @@ import type {
   CardItem,
   CardLink,
   ID,
+  ScheduleItem,
+  Transaction,
   User,
   Workspace,
 } from './model/types'
@@ -38,6 +40,7 @@ export function makeSeed() {
     id: boardId,
     workspaceId: wsId,
     title: 'Spring Campaign Brainstorm',
+    color: '#8b5cf6',
     createdAt: now,
     updatedAt: now,
   }
@@ -91,6 +94,89 @@ export function makeSeed() {
   addLink(c1, c2)
   addLink(c1, c3)
 
+  const scheduleItems: Record<ID, ScheduleItem> = {}
+  const transactions: Record<ID, Transaction> = {}
+
+  const addSchedule = (partial: Partial<ScheduleItem>) => {
+    const schedule: ScheduleItem = {
+      id: id('sch'),
+      workspaceId: wsId,
+      boardId,
+      linkedCardId: undefined,
+      title: partial.title ?? 'Production task',
+      note: partial.note ?? '',
+      startDate: partial.startDate ?? now,
+      endDate: partial.endDate ?? now,
+      status: partial.status ?? 'Production',
+      createdAt: now,
+      updatedAt: now,
+    }
+    scheduleItems[schedule.id] = schedule
+  }
+
+  addSchedule({
+    title: 'Pre-production lock',
+    note: 'Approve the concept deck and lock references.',
+    linkedCardId: c1,
+    startDate: now + 1000 * 60 * 60 * 24,
+    endDate: now + 1000 * 60 * 60 * 24 * 2,
+    status: 'Review',
+  })
+
+  addSchedule({
+    title: 'Moodboard capture day',
+    note: 'Shoot and collect environment textures.',
+    linkedCardId: c2,
+    startDate: now + 1000 * 60 * 60 * 24 * 4,
+    endDate: now + 1000 * 60 * 60 * 24 * 6,
+    status: 'Production',
+  })
+
+  addSchedule({
+    title: 'Shot list final review',
+    note: 'Finalize asset order and delivery sequence.',
+    linkedCardId: c3,
+    startDate: now + 1000 * 60 * 60 * 24 * 8,
+    endDate: now + 1000 * 60 * 60 * 24 * 8,
+    status: 'Finalizing',
+  })
+
+  const addTransaction = (partial: Omit<Transaction, 'id' | 'workspaceId'>) => {
+    const transaction: Transaction = {
+      id: id('txn'),
+      workspaceId: wsId,
+      ...partial,
+    }
+    transactions[transaction.id] = transaction
+  }
+
+  addTransaction({
+    projectId: boardId,
+    type: 'income',
+    amount: 18500,
+    category: 'Client Retainer',
+    date: now - 1000 * 60 * 60 * 24 * 4,
+    note: 'Spring campaign deposit received.',
+  })
+
+  addTransaction({
+    projectId: boardId,
+    type: 'expense',
+    amount: 2400,
+    category: 'Equipment Rental',
+    date: now - 1000 * 60 * 60 * 24 * 2,
+    note: 'Lighting kit and lens package.',
+  })
+
+  addTransaction({
+    projectId: undefined,
+    type: 'expense',
+    amount: 780,
+    category: 'Studio Ops',
+    date: now - 1000 * 60 * 60 * 12,
+    note: 'Sound booth maintenance.',
+  })
+
   return {
     currentUserId: me,
     users,
@@ -100,5 +186,7 @@ export function makeSeed() {
     items,
     links,
     comments,
+    scheduleItems,
+    transactions,
   }
 }

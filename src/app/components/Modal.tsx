@@ -25,10 +25,10 @@ export function Modal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[999]">
+    <div className="fixed inset-0" style={{ zIndex: 'var(--z-modal)' }}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-6">
-        <div className={`${widthClass} max-w-[95vw] max-h-[90vh] rounded-lg border border-border bg-panel shadow-panel overflow-hidden flex flex-col`}>
+        <div className={`${widthClass} max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col glass-panel`} style={{ borderRadius: 20 }}>
           <div className="h-12 px-4 flex items-center justify-between border-b border-border">
             <div className="text-sm font-semibold truncate">{title}</div>
             <button className="text-xs text-muted hover:text-text" onClick={onClose}>

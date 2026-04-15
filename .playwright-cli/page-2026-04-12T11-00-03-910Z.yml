@@ -1,0 +1,124 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: S
+        - generic [ref=e8]:
+          - generic [ref=e9]: Acme Creative Studio
+          - generic [ref=e10]: Studio Workspace
+      - generic [ref=e11]:
+        - generic [ref=e12]: Who's active
+        - generic [ref=e13]:
+          - generic "You" [ref=e14]:
+            - img "You" [ref=e15]
+          - generic "Alya" [ref=e16]:
+            - img "Alya" [ref=e17]
+          - generic "Bimo" [ref=e18]:
+            - img "Bimo" [ref=e19]
+          - generic "Citra" [ref=e20]:
+            - img "Citra" [ref=e21]
+    - navigation [ref=e22]:
+      - generic [ref=e23]: Studio
+      - generic [ref=e24]:
+        - link "Dashboard" [ref=e25] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/dashboard
+          - img [ref=e27]
+          - generic [ref=e30]: Dashboard
+        - link "Projects soon" [ref=e31] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/projects
+          - img [ref=e33]
+          - generic [ref=e35]: Projects
+          - generic [ref=e36]: soon
+        - link "Calendar soon" [ref=e37] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/calendar
+          - img [ref=e39]
+          - generic [ref=e41]: Calendar
+          - generic [ref=e42]: soon
+        - link "Billing soon" [ref=e43] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/billing
+          - img [ref=e45]
+          - generic [ref=e47]: Billing
+          - generic [ref=e48]: soon
+    - generic [ref=e49]:
+      - link "Settings soon" [ref=e51] [cursor=pointer]:
+        - /url: /w/ws_b85f620ce86218_19d8156bd13/settings
+        - img [ref=e53]
+        - generic [ref=e56]: Settings
+        - generic [ref=e57]: soon
+      - generic [ref=e60]: Local · prototype
+  - main [ref=e62]:
+    - generic [ref=e435]:
+      - generic [ref=e436]:
+        - generic [ref=e437]:
+          - heading "Production Schedule" [level=1] [ref=e438]
+          - button "Today" [ref=e440] [cursor=pointer]
+          - generic [ref=e441]:
+            - button [ref=e442] [cursor=pointer]:
+              - img [ref=e443]
+            - button [ref=e445] [cursor=pointer]:
+              - img [ref=e446]
+          - generic [ref=e448]: April 2026
+        - button "Add Task" [ref=e450] [cursor=pointer]:
+          - img [ref=e451]
+          - text: Add Task
+      - generic [ref=e452]:
+        - generic [ref=e559]:
+          - generic [ref=e560]:
+            - generic [ref=e561]: Sun
+            - generic [ref=e562]: "12"
+          - generic [ref=e566] [cursor=pointer]:
+            - generic [ref=e567]:
+              - generic [ref=e568]: Spring Campaign Brainstorm
+              - heading "Storyboard review v2" [level=4] [ref=e607]
+              - generic [ref=e571]:
+                - generic [ref=e572]:
+                  - img [ref=e573]
+                  - text: 07:00 AM
+                - generic [ref=e576]: Updated through the calendar edit flow
+            - generic [ref=e577]: Production
+        - generic [ref=e459]:
+          - generic [ref=e460]:
+            - generic [ref=e461]: April 2026
+            - generic [ref=e462]:
+              - generic [ref=e463]: S
+              - generic [ref=e464]: M
+              - generic [ref=e465]: T
+              - generic [ref=e466]: W
+              - generic [ref=e467]: T
+              - generic [ref=e468]: F
+              - generic [ref=e469]: S
+              - generic [ref=e474] [cursor=pointer]: "1"
+              - generic [ref=e476] [cursor=pointer]: "2"
+              - generic [ref=e478] [cursor=pointer]: "3"
+              - generic [ref=e480] [cursor=pointer]: "4"
+              - generic [ref=e482] [cursor=pointer]: "5"
+              - generic [ref=e484] [cursor=pointer]: "6"
+              - generic [ref=e486] [cursor=pointer]: "7"
+              - generic [ref=e488] [cursor=pointer]: "8"
+              - generic [ref=e490] [cursor=pointer]: "9"
+              - generic [ref=e492] [cursor=pointer]: "10"
+              - generic [ref=e494] [cursor=pointer]: "11"
+              - generic [ref=e496] [cursor=pointer]: "12"
+              - generic [ref=e498] [cursor=pointer]: "13"
+              - generic [ref=e500] [cursor=pointer]: "14"
+              - generic [ref=e502] [cursor=pointer]: "15"
+              - generic [ref=e504] [cursor=pointer]: "16"
+              - generic [ref=e506] [cursor=pointer]: "17"
+              - generic [ref=e508] [cursor=pointer]: "18"
+              - generic [ref=e510] [cursor=pointer]: "19"
+              - generic [ref=e512] [cursor=pointer]: "20"
+              - generic [ref=e514] [cursor=pointer]: "21"
+              - generic [ref=e516] [cursor=pointer]: "22"
+              - generic [ref=e518] [cursor=pointer]: "23"
+              - generic [ref=e520] [cursor=pointer]: "24"
+              - generic [ref=e522] [cursor=pointer]: "25"
+              - generic [ref=e524] [cursor=pointer]: "26"
+              - generic [ref=e526] [cursor=pointer]: "27"
+              - generic [ref=e528] [cursor=pointer]: "28"
+              - generic [ref=e530] [cursor=pointer]: "29"
+              - generic [ref=e532] [cursor=pointer]: "30"
+          - generic [ref=e533]:
+            - heading "Timeline Overview" [level=5] [ref=e534]
+            - generic [ref=e582]:
+              - generic [ref=e583]: Storyboard review v2
+              - generic [ref=e584]: 4/12/2026

@@ -1,23 +1,24 @@
+import { useParams } from 'react-router-dom'
+import { useAppStore } from '../store/useAppStore'
+import { Breadcrumbs } from '../components/Breadcrumbs'
+
 export function StubPage({ title }: { title: string }) {
+  const { workspaceId } = useParams()
+  const workspace = useAppStore((s) => (workspaceId ? s.workspaces[workspaceId] : undefined))
+
   return (
-    <div className="h-full p-8 overflow-auto">
-      <div className="max-w-2xl">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="mt-2 text-muted">
-          This page is a polished stub for the prototype. The only fully working module right now is <b>Workspace</b>.
-        </p>
-        <div className="mt-6 rounded-lg border border-border bg-panel p-4">
-          <div className="text-sm text-muted">Actions</div>
-          <div className="mt-3 flex gap-2">
-            <button className="rounded border border-border px-3 py-2 text-sm text-muted" disabled>
-              Create
-            </button>
-            <button className="rounded border border-border px-3 py-2 text-sm text-muted" disabled>
-              Import
-            </button>
-            <button className="rounded border border-border px-3 py-2 text-sm text-muted" disabled>
-              Export
-            </button>
+    <div style={{ height: '100%', overflowY: 'auto', padding: '32px 36px' }}>
+      <div style={{ maxWidth: 760 }}>
+        <Breadcrumbs items={[{ label: workspace?.name ?? 'Workspace', to: workspaceId ? `/w/${workspaceId}/dashboard` : undefined }, { label: title }]} />
+        <div className="glass-panel" style={{ marginTop: 18, padding: 28, borderRadius: 24 }}>
+          <h1 className="font-display" style={{ fontSize: 28, fontWeight: 800 }}>{title}</h1>
+          <p style={{ marginTop: 10, color: 'rgb(var(--c-muted))' }}>
+            This module is still in preview. The next studio-facing priority is resource booking for shared gear and rooms.
+          </p>
+          <div style={{ marginTop: 22, display: 'flex', gap: 10 }}>
+            <button className="btn btn-ghost" disabled>Create</button>
+            <button className="btn btn-ghost" disabled>Import</button>
+            <button className="btn btn-ghost" disabled>Export</button>
           </div>
         </div>
       </div>

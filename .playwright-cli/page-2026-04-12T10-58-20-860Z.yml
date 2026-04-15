@@ -1,0 +1,195 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: S
+        - generic [ref=e8]:
+          - generic [ref=e9]: Acme Creative Studio
+          - generic [ref=e10]: Studio Workspace
+      - generic [ref=e11]:
+        - generic [ref=e12]: Who's active
+        - generic [ref=e13]:
+          - generic "You" [ref=e14]:
+            - img "You" [ref=e15]
+          - generic "Alya" [ref=e16]:
+            - img "Alya" [ref=e17]
+          - generic "Bimo" [ref=e18]:
+            - img "Bimo" [ref=e19]
+          - generic "Citra" [ref=e20]:
+            - img "Citra" [ref=e21]
+    - navigation [ref=e22]:
+      - generic [ref=e23]: Studio
+      - generic [ref=e24]:
+        - link "Dashboard" [ref=e25] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/dashboard
+          - img [ref=e27]
+          - generic [ref=e30]: Dashboard
+        - link "Projects soon" [ref=e31] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/projects
+          - img [ref=e33]
+          - generic [ref=e35]: Projects
+          - generic [ref=e36]: soon
+        - link "Calendar soon" [ref=e37] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/calendar
+          - img [ref=e39]
+          - generic [ref=e41]: Calendar
+          - generic [ref=e42]: soon
+        - link "Billing soon" [ref=e43] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/billing
+          - img [ref=e45]
+          - generic [ref=e47]: Billing
+          - generic [ref=e48]: soon
+    - generic [ref=e49]:
+      - link "Settings soon" [ref=e51] [cursor=pointer]:
+        - /url: /w/ws_b85f620ce86218_19d8156bd13/settings
+        - img [ref=e53]
+        - generic [ref=e56]: Settings
+        - generic [ref=e57]: soon
+      - generic [ref=e60]: Local · prototype
+  - main [ref=e62]:
+    - generic [ref=e193]:
+      - generic [ref=e194]:
+        - generic [ref=e195]:
+          - link [ref=e196] [cursor=pointer]:
+            - /url: /w/ws_b85f620ce86218_19d8156bd13/dashboard
+            - img [ref=e197]
+          - generic [ref=e200]:
+            - img [ref=e201]
+            - generic [ref=e203]: Spring Campaign Brainstorm
+        - img "You" [ref=e205]
+        - generic [ref=e206]:
+          - button "Undo (Ctrl+Z)" [ref=e207] [cursor=pointer]:
+            - img [ref=e208]
+          - button "Redo (Ctrl+Shift+Z)" [ref=e211] [cursor=pointer]:
+            - img [ref=e212]
+          - button "Card" [ref=e216] [cursor=pointer]:
+            - img [ref=e217]
+            - text: Card
+      - generic [ref=e219]:
+        - generic:
+          - img
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - generic [ref=e224]: Hero concept
+              - generic [ref=e225]: Drag to move. Space+drag pans. Drag link handles to connect ideas.
+            - generic [ref=e227]: One text box per card. Use it for tasks or notes.
+            - generic [ref=e228]:
+              - generic [ref=e229]:
+                - img [ref=e230]
+                - text: "1"
+              - generic [ref=e232]:
+                - img [ref=e233]
+                - text: "2"
+              - generic [ref=e236]: Apr 12
+            - button "Drag to link" [ref=e237]:
+              - img [ref=e238]
+            - button "Drag to link" [ref=e240]:
+              - img [ref=e241]
+            - button "Drag to link" [ref=e243]:
+              - img [ref=e244]
+            - button "Drag to link" [ref=e246]:
+              - img [ref=e247]
+          - generic [ref=e280]:
+            - generic [ref=e281]:
+              - generic [ref=e282]: Shot list
+              - generic [ref=e283]: Drag to move. Space+drag pans. Drag link handles to connect ideas.
+            - generic [ref=e285]: One text box per card. Use it for tasks or notes.
+            - generic [ref=e286]:
+              - generic [ref=e287]:
+                - img [ref=e288]
+                - text: "1"
+              - generic [ref=e290]:
+                - img [ref=e291]
+                - text: "1"
+              - generic [ref=e294]: Apr 12
+            - button "Drag to link" [ref=e295]:
+              - img [ref=e296]
+            - button "Drag to link" [ref=e298]:
+              - img [ref=e299]
+            - button "Drag to link" [ref=e301]:
+              - img [ref=e302]
+            - button "Drag to link" [ref=e304]:
+              - img [ref=e305]
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - img [ref=e326]
+              - generic [ref=e333]: drag to move
+              - button "Delete" [ref=e334] [cursor=pointer]:
+                - img [ref=e335]
+                - generic [ref=e338]: Delete
+              - button "Close / Unfocus card" [ref=e340] [cursor=pointer]:
+                - img [ref=e341]
+            - generic [ref=e344]:
+              - textbox "Card title" [ref=e345]: Moodboard
+              - textbox "Short description…" [ref=e346]: Drag to move. Space+drag pans. Drag link handles to connect ideas.
+            - generic [ref=e347]:
+              - generic [ref=e348]:
+                - button "Text 1" [ref=e349] [cursor=pointer]:
+                  - img [ref=e350]
+                  - img [ref=e352]
+                  - generic [ref=e353]: Text
+                  - generic [ref=e354]: "1"
+                - button "Comments" [active] [ref=e355] [cursor=pointer]:
+                  - img [ref=e356]
+              - textbox "Write a note or task…" [ref=e359]: One text box per card. Use it for tasks or notes.
+            - generic [ref=e360]:
+              - generic [ref=e361]:
+                - button "Media" [ref=e362] [cursor=pointer]:
+                  - img [ref=e363]
+                  - img [ref=e365]
+                  - generic [ref=e369]: Media
+                - button "Comments" [ref=e370] [cursor=pointer]:
+                  - img [ref=e371]
+              - generic [ref=e374] [cursor=pointer]: + Drop or click to add images / videos
+            - generic [ref=e257]:
+              - generic [ref=e375]:
+                - button "Files" [ref=e376] [cursor=pointer]:
+                  - img [ref=e377]
+                  - img [ref=e379]
+                  - generic [ref=e382]: Files
+                - button "Comments" [ref=e383] [cursor=pointer]:
+                  - img [ref=e384]
+              - generic [ref=e387] [cursor=pointer]: + Drop or click to attach files
+            - generic [ref=e388]:
+              - button "1" [ref=e389] [cursor=pointer]:
+                - img [ref=e390]
+                - generic [ref=e392]: "1"
+              - generic [ref=e393]:
+                - img [ref=e394]
+                - text: "1"
+              - generic [ref=e397]: Apr 12
+            - generic [ref=e412]:
+              - generic [ref=e413]:
+                - generic [ref=e414]:
+                  - text: Comments
+                  - generic [ref=e415]: (1)
+                - button "×" [ref=e416] [cursor=pointer]
+              - generic [ref=e418]:
+                - generic [ref=e419]:
+                  - generic [ref=e420]: "Y"
+                  - generic [ref=e421]: You
+                  - generic [ref=e422]: Apr 12
+                - generic [ref=e423]: This is a prototype comment thread.
+              - generic [ref=e424]:
+                - textbox "Add a comment… (Ctrl+Enter to post)" [ref=e425]
+                - button "Post" [disabled] [ref=e427]
+            - button "Drag to link" [ref=e398]:
+              - img [ref=e399]
+            - button "Drag to link" [ref=e401]:
+              - img [ref=e402]
+            - button "Drag to link" [ref=e404]:
+              - img [ref=e405]
+            - button "Drag to link" [ref=e407]:
+              - img [ref=e408]
+        - generic [ref=e309]:
+          - generic [ref=e310]: Space
+          - generic [ref=e311]: +drag pan
+          - generic [ref=e312]: ·
+          - generic [ref=e313]: Ctrl
+          - generic [ref=e314]: +scroll zoom
+          - generic [ref=e315]: ·
+          - generic [ref=e316]: double-click to add card
+        - generic [ref=e317]:
+          - img [ref=e318]
+          - generic [ref=e323]: "3"
+          - generic [ref=e324]: / 100 cards

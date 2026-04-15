@@ -1,0 +1,152 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: S
+        - generic [ref=e8]:
+          - generic [ref=e9]: Acme Creative Studio
+          - generic [ref=e10]: Studio Workspace
+      - generic [ref=e11]:
+        - generic [ref=e12]: Who's active
+        - generic [ref=e13]:
+          - generic "You" [ref=e14]:
+            - img "You" [ref=e15]
+          - generic "Alya" [ref=e16]:
+            - img "Alya" [ref=e17]
+          - generic "Bimo" [ref=e18]:
+            - img "Bimo" [ref=e19]
+          - generic "Citra" [ref=e20]:
+            - img "Citra" [ref=e21]
+    - navigation [ref=e22]:
+      - generic [ref=e23]: Studio
+      - generic [ref=e24]:
+        - link "Dashboard" [ref=e25] [cursor=pointer]:
+          - /url: /w/ws_48807eb9398ab8_19d81569238/dashboard
+          - img [ref=e27]
+          - generic [ref=e30]: Dashboard
+        - link "Projects soon" [ref=e31] [cursor=pointer]:
+          - /url: /w/ws_48807eb9398ab8_19d81569238/projects
+          - img [ref=e33]
+          - generic [ref=e35]: Projects
+          - generic [ref=e36]: soon
+        - link "Calendar soon" [ref=e37] [cursor=pointer]:
+          - /url: /w/ws_48807eb9398ab8_19d81569238/calendar
+          - img [ref=e39]
+          - generic [ref=e41]: Calendar
+          - generic [ref=e42]: soon
+        - link "Billing soon" [ref=e43] [cursor=pointer]:
+          - /url: /w/ws_48807eb9398ab8_19d81569238/billing
+          - img [ref=e45]
+          - generic [ref=e47]: Billing
+          - generic [ref=e48]: soon
+    - generic [ref=e49]:
+      - link "Settings soon" [ref=e51] [cursor=pointer]:
+        - /url: /w/ws_48807eb9398ab8_19d81569238/settings
+        - img [ref=e53]
+        - generic [ref=e56]: Settings
+        - generic [ref=e57]: soon
+      - generic [ref=e60]: Local · prototype
+  - main [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]: Studio Dashboard
+        - heading "Acme Creative Studio" [level=1] [ref=e66]
+        - paragraph [ref=e67]: Manage your projects, calendar, and studio billing from one place.
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - img [ref=e71]
+          - generic [ref=e76]: "1"
+          - generic [ref=e77]: Projects
+        - generic [ref=e79]:
+          - img [ref=e81]
+          - generic [ref=e85]: "0"
+          - generic [ref=e86]: Active tasks
+        - generic [ref=e88]:
+          - img [ref=e90]
+          - generic [ref=e93]: "0"
+          - generic [ref=e94]: Upcoming
+        - button "New Project" [ref=e96] [cursor=pointer]:
+          - img [ref=e97]
+          - text: New Project
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - heading "Projects" [level=2] [ref=e101]
+            - generic [ref=e102]: 1 / 10
+          - link "Project Spring Campaign Brainstorm Apr 12 Workspace" [ref=e104] [cursor=pointer]:
+            - /url: /w/ws_48807eb9398ab8_19d81569238/project/b_f9eb38135038f_19d81569238
+            - generic [ref=e105]:
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - generic [ref=e109]: Project
+                  - generic [ref=e110]: Spring Campaign Brainstorm
+                - img [ref=e112]
+              - generic [ref=e116]:
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - text: Apr 12
+                - generic [ref=e121]: Workspace
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - img [ref=e126]
+              - generic [ref=e128]: Calendar
+              - generic [ref=e129]: April 2026
+            - generic [ref=e130]:
+              - generic [ref=e131]: S
+              - generic [ref=e132]: M
+              - generic [ref=e133]: T
+              - generic [ref=e134]: W
+              - generic [ref=e135]: T
+              - generic [ref=e136]: F
+              - generic [ref=e137]: S
+              - generic [ref=e141]: "1"
+              - generic [ref=e142]: "2"
+              - generic [ref=e143]: "3"
+              - generic [ref=e144]: "4"
+              - generic [ref=e145]: "5"
+              - generic [ref=e146]: "6"
+              - generic [ref=e147]: "7"
+              - generic [ref=e148]: "8"
+              - generic [ref=e149]: "9"
+              - generic [ref=e150]: "10"
+              - generic [ref=e151]: "11"
+              - generic [ref=e152]: "12"
+              - generic [ref=e153]: "13"
+              - generic [ref=e154]: "14"
+              - generic [ref=e155]: "15"
+              - generic [ref=e156]: "16"
+              - generic [ref=e157]: "17"
+              - generic [ref=e158]: "18"
+              - generic [ref=e159]: "19"
+              - generic [ref=e160]: "20"
+              - generic [ref=e161]: "21"
+              - generic [ref=e162]: "22"
+              - generic [ref=e163]: "23"
+              - generic [ref=e164]: "24"
+              - generic [ref=e165]: "25"
+              - generic [ref=e166]: "26"
+              - generic [ref=e167]: "27"
+              - generic [ref=e168]: "28"
+              - generic [ref=e169]: "29"
+              - generic [ref=e170]: "30"
+            - generic [ref=e171]: Deadline tracking coming soon
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - img [ref=e175]
+              - generic [ref=e177]: Studio Billing
+            - generic [ref=e178]: $0.00
+            - generic [ref=e179]: outstanding this month
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: Recording session
+                - generic [ref=e183]:
+                  - generic [ref=e184]: $0
+                  - generic [ref=e185]: Cleared
+              - generic [ref=e186]:
+                - generic [ref=e187]: Mixing & Mastering
+                - generic [ref=e188]:
+                  - generic [ref=e189]: $0
+                  - generic [ref=e190]: Pending
+            - generic [ref=e191]: Billing module coming soon
+      - generic [ref=e192]: 💡 Open a project to access the canvas workspace — add cards, link ideas, and track your production flow.

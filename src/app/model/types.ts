@@ -17,6 +17,7 @@ export type Board = {
   id: ID
   workspaceId: ID
   title: string
+  color: string
   createdAt: number
   updatedAt: number
 }
@@ -46,6 +47,20 @@ export type Card = {
   updatedAt: number
 }
 
+export type ScheduleItem = {
+  id: ID
+  workspaceId: ID
+  boardId?: ID
+  linkedCardId?: ID
+  title: string
+  note: string
+  startDate: number
+  endDate: number
+  status: string
+  createdAt: number
+  updatedAt: number
+}
+
 export type CardItemType = 'image' | 'video' | 'file'
 
 export type CardItem = {
@@ -67,6 +82,7 @@ export type CardLink = {
   boardId: ID
   a: ID
   b: ID
+  label?: string
   createdAt: number
 }
 
@@ -76,6 +92,17 @@ export type CardComment = {
   authorId: ID
   body: string
   createdAt: number
+}
+
+export type Transaction = {
+  id: ID
+  workspaceId: ID
+  projectId?: ID
+  type: 'income' | 'expense'
+  amount: number
+  category: string
+  date: number
+  note: string
 }
 
 export type BoardSnapshot = {

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
-import type { Card, CardItem, ID } from '../model/types'
+import type { Card, ID } from '../model/types'
 import { clamp, screenToWorld } from '../utils/geom'
 import { CardNode } from '../canvas/CardNode'
 import { LinkLayer } from '../canvas/LinkLayer'
-import { RightPanel } from '../canvas/RightPanel'
 import { putMedia } from '../store/media'
 import { id as makeId } from '../utils/id'
+import { Breadcrumbs } from '../components/Breadcrumbs'
+import { Tooltip } from '../components/Tooltip'
+import { ConfirmModal } from '../components/ConfirmModal'
 
 type WorldPt = { x: number; y: number }
 
@@ -24,14 +26,20 @@ function isEditableTarget(t: EventTarget | null) {
   return false
 }
 
+const GRID_SIZE = 8
+
+function snapToGrid(value: number) {
+  return Math.round(value / GRID_SIZE) * GRID_SIZE
+}
+
 export function BoardCanvasPage() {
   const { workspaceId, boardId } = useParams()
+  const navigate = useNavigate()
   const ensureSeeded = useAppStore((s) => s.ensureSeeded)
+  const workspace = useAppStore((s) => (workspaceId ? s.workspaces[workspaceId] : undefined))
 
   const board = useAppStore((s) => (boardId ? s.boards[boardId] : undefined))
   const cardsByIdAll = useAppStore((s) => s.cards)
-  const itemsByIdAll = useAppStore((s) => s.items)
-  const commentsByIdAll = useAppStore((s) => s.comments)
   const linksByIdAll = useAppStore((s) => s.links)
   const users = useAppStore((s) => s.users)
 
@@ -40,6 +48,7 @@ export function BoardCanvasPage() {
   const addMediaItem = useAppStore((s) => s.addMediaItem)
   const updateCard = useAppStore((s) => s.updateCard)
   const createLink = useAppStore((s) => s.createLink)
+  const updateLink = useAppStore((s) => s.updateLink)
   const deleteLink = useAppStore((s) => s.deleteLink)
   const undo = useAppStore((s) => s.undo)
   const redo = useAppStore((s) => s.redo)
@@ -60,57 +69,7 @@ export function BoardCanvasPage() {
     return Object.values(linksByIdAll).filter((l) => l.boardId === boardId)
   }, [linksByIdAll, boardId])
 
-  const byCard = useMemo(() => {
-    const items: Record<ID, CardItem[]> = {}
-    const commentsCount: Record<ID, number> = {}
-    const linkCount: Record<ID, number> = {}
 
-    for (const it of Object.values(itemsByIdAll)) {
-      ;(items[it.cardId] ??= []).push(it)
-    }
-    for (const c of Object.values(commentsByIdAll)) {
-      commentsCount[c.cardId] = (commentsCount[c.cardId] ?? 0) + 1
-    }
-    for (const l of links) {
-      linkCount[l.a] = (linkCount[l.a] ?? 0) + 1
-      linkCount[l.b] = (linkCount[l.b] ?? 0) + 1
-    }
-
-    for (const list of Object.values(items)) list.sort((a, b) => a.position - b.position)
-
-    return { items, commentsCount, linkCount }
-  }, [itemsByIdAll, commentsByIdAll, links])
-
-  const previews = useMemo(() => {
-    const out: Record<ID, any> = {}
-    for (const c of cards) {
-      const its = byCard.items[c.id] ?? []
-
-      const note = (c.note ?? '').trim()
-      const primaryText = (note || c.description || '').split('\n').slice(0, 3).join('\n')
-
-      const media = its
-        .filter((x) => x.type === 'image' || x.type === 'video')
-        .slice(0, 3)
-        .map((x) => ({ kind: x.type, mediaId: x.content.mediaId, name: x.content.name }))
-
-      const files = its
-        .filter((x) => x.type === 'file')
-        .slice(0, 3)
-        .map((x) => ({ name: x.content.name }))
-
-      out[c.id] = {
-        primaryText,
-        badgeItems: its.length + (note ? 1 : 0),
-        badgeComments: byCard.commentsCount[c.id] ?? 0,
-        badgeLinks: byCard.linkCount[c.id] ?? 0,
-        note,
-        mediaThumbs: media,
-        fileThumbs: files,
-      }
-    }
-    return out
-  }, [cards, byCard])
 
   const cardsById = useMemo(() => {
     const m: Record<ID, Card> = {}
@@ -123,12 +82,27 @@ export function BoardCanvasPage() {
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 })
   const [selectedCardId, setSelectedCardId] = useState<ID | null>(null)
   const [selectedLinkId, setSelectedLinkId] = useState<ID | null>(null)
+  const [pendingDeleteLinkId, setPendingDeleteLinkId] = useState<ID | null>(null)
 
   const [spaceDown, setSpaceDown] = useState(false)
+  const [uploadFeedback, setUploadFeedback] = useState<null | { count: number; label: string }>(null)
 
   const [dragLink, setDragLink] = useState<null | { from: ID; to: WorldPt }>(null)
 
   const maxCards = 100
+  const LARGE_MEDIA_THRESHOLD = 500 * 1024
+
+  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+  const resolveSpawnPosition = (x: number, y: number) => {
+    let nextX = snapToGrid(x)
+    let nextY = snapToGrid(y)
+    while (cards.some((card) => card.x === nextX && card.y === nextY)) {
+      nextX += 20
+      nextY += 20
+    }
+    return { x: nextX, y: nextY }
+  }
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -193,15 +167,12 @@ export function BoardCanvasPage() {
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLinkId) {
         e.preventDefault()
-        if (confirm('Remove this link?')) {
-          withHistory(boardId, () => deleteLink(selectedLinkId))
-        }
-        setSelectedLinkId(null)
+        setPendingDeleteLinkId(selectedLinkId)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [boardId, undo, redo])
+  }, [boardId, undo, redo, selectedLinkId, deleteLink, withHistory])
 
   const startPan = (e: React.PointerEvent) => {
     const el = containerRef.current
@@ -218,7 +189,7 @@ export function BoardCanvasPage() {
     const cleanup = () => {
       try {
         el.releasePointerCapture(e.pointerId)
-      } catch {}
+      } catch { /* pointer may already be released */ }
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
@@ -251,18 +222,19 @@ export function BoardCanvasPage() {
     if (cards.length >= maxCards) return
     const rect = containerRef.current.getBoundingClientRect()
     const p = screenToWorld({ x: clientX, y: clientY }, viewport, rect)
+    const spawn = resolveSpawnPosition(Math.round(p.x), Math.round(p.y))
 
     withHistory(boardId, () => {
-      const id = createCard(boardId, {
+      const nid = createCard(boardId, {
         title: 'New card',
         description: '',
-        x: Math.round(p.x),
-        y: Math.round(p.y),
-        w: 340,
-        h: 220,
+        x: spawn.x,
+        y: spawn.y,
+        w: 280,
+        h: 120,   // auto-height will override this after first render
         z: Date.now(),
       })
-      setSelectedCardId(id)
+      setSelectedCardId(nid)
     })
   }
 
@@ -286,6 +258,16 @@ export function BoardCanvasPage() {
     return null
   }
 
+  const maybeSimulateUpload = async (files: File[]) => {
+    const hasLargeMedia = files.some((file) => file.size > LARGE_MEDIA_THRESHOLD)
+    if (!hasLargeMedia) return
+    setUploadFeedback({
+      count: files.length,
+      label: files.length > 1 ? 'Processing media files...' : 'Processing media...',
+    })
+    await wait(520)
+  }
+
   const makeDragHandlers = (cardId: ID) => {
     return (e: React.PointerEvent) => {
       if (!boardId || !containerRef.current) return
@@ -303,58 +285,45 @@ export function BoardCanvasPage() {
       const onMove = (ev: PointerEvent) => {
         const dx = (ev.clientX - start.x) / viewport.scale
         const dy = (ev.clientY - start.y) / viewport.scale
-        updateCard(cardId, { x: base.x + dx, y: base.y + dy })
+        updateCard(cardId, { x: snapToGrid(base.x + dx), y: snapToGrid(base.y + dy) })
       }
-      const onUp = () => {
+      const onUp = (ev: PointerEvent) => {
+        const dx = ev.clientX - start.x
+        const dy = ev.clientY - start.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+
         el.releasePointerCapture(e.pointerId)
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
+
+        // Only select/expand if the movement was very small (a simple click)
+        if (dist < 6) {
+          setSelectedCardId(cardId)
+        }
       }
       window.addEventListener('pointermove', onMove)
       window.addEventListener('pointerup', onUp)
     }
   }
 
-  const makeResizeHandlers = (cardId: ID, corner: 'br' | 'tr' | 'bl' | 'tl') => {
+  // Right-edge-only resize: both 'tr' and 'br' change width only
+  const makeResizeHandlers = (cardId: ID) => {
     return (e: React.PointerEvent) => {
       if (!boardId || !containerRef.current) return
       const el = containerRef.current
       const c0 = cardsById[cardId]
       if (!c0) return
-      const start = { x: e.clientX, y: e.clientY }
-      const base = { x: c0.x, y: c0.y, w: c0.w, h: c0.h }
+      const start = { x: e.clientX }
+      const base  = { x: c0.x, w: c0.w }
 
-      withHistory(boardId, () => {
-        updateCard(cardId, { z: Date.now() })
-      })
+      withHistory(boardId, () => { updateCard(cardId, { z: Date.now() }) })
 
       el.setPointerCapture(e.pointerId)
       const onMove = (ev: PointerEvent) => {
-        const dx = (ev.clientX - start.x) / viewport.scale
-        const dy = (ev.clientY - start.y) / viewport.scale
-
-        let x = base.x,
-          y = base.y,
-          w = base.w,
-          h = base.h
-
-        const minW = 260
-        const minH = 170
-
-        if (corner.includes('r')) w = Math.max(minW, base.w + dx)
-        if (corner.includes('b')) h = Math.max(minH, base.h + dy)
-        if (corner.includes('l')) {
-          const nextW = Math.max(minW, base.w - dx)
-          x = base.x + (base.w - nextW)
-          w = nextW
-        }
-        if (corner.includes('t')) {
-          const nextH = Math.max(minH, base.h - dy)
-          y = base.y + (base.h - nextH)
-          h = nextH
-        }
-
-        updateCard(cardId, { x, y, w, h })
+        const dx   = (ev.clientX - start.x) / viewport.scale
+        const minW = 200
+        const w    = Math.max(minW, snapToGrid(base.w + dx))
+        updateCard(cardId, { w })
       }
       const onUp = () => {
         el.releasePointerCapture(e.pointerId)
@@ -391,16 +360,17 @@ export function BoardCanvasPage() {
           createLink(boardId, fromId, target)
         })
       } else {
-        // auto-create a card when dropped on empty space
+        // drop on empty space: auto-create linked card
         if (cards.length < maxCards) {
+          const spawn = resolveSpawnPosition(Math.round(end.x), Math.round(end.y))
           withHistory(boardId, () => {
             const newId = createCard(boardId, {
               title: 'New card',
               description: '',
-              x: Math.round(end.x),
-              y: Math.round(end.y),
-              w: 340,
-              h: 220,
+              x: spawn.x,
+              y: spawn.y,
+              w: snapToGrid(280),
+              h: 120,
               z: Date.now(),
             })
             createLink(boardId, fromId, newId)
@@ -417,7 +387,11 @@ export function BoardCanvasPage() {
   }
 
   if (!workspaceId || !boardId || !board) {
-    return <div className="p-6">Missing board</div>
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgb(var(--c-muted))', fontSize: 14 }}>
+        Board not found
+      </div>
+    )
   }
 
   const me = users[useAppStore.getState().currentUserId]
@@ -430,57 +404,92 @@ export function BoardCanvasPage() {
     : null
 
   return (
-    <div className="h-full flex">
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-panel/40">
-          <div className="min-w-0">
-            <div className="text-xs text-muted">Board</div>
-            <div className="text-sm font-semibold truncate">{board.title}</div>
-          </div>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-muted">Viewer:</div>
-            <img
-              src={me?.avatarUrl}
-              className="h-7 w-7 rounded-full border border-border object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <div className="w-px h-6 bg-border mx-2" />
+      {/* ── Canvas Toolbar Header ── */}
+      <div style={{
+        height: 48, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+        background: 'rgba(var(--c-surface), 0.9)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgb(var(--c-border))',
+      }}>
 
-            <button
-              className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
-              onClick={() => undo(boardId)}
-              title="Undo (Ctrl/Cmd+Z)"
-            >
-              Undo
-            </button>
-            <button
-              className="text-xs rounded border border-border px-2 py-1 text-muted hover:text-text hover:bg-white/5"
-              onClick={() => redo(boardId)}
-              title="Redo (Ctrl/Cmd+Shift+Z)"
-            >
-              Redo
-            </button>
-            <button
-              className="text-xs rounded bg-brand px-2 py-1 text-white hover:opacity-90 disabled:opacity-50"
-              onClick={() => {
-                const el = containerRef.current
-                if (!el) return
-                createCardAt(el.getBoundingClientRect().left + 220, el.getBoundingClientRect().top + 220)
-              }}
-              disabled={cards.length >= maxCards}
-              title={cards.length >= maxCards ? 'Max 100 cards/board' : 'Create card'}
-            >
-              + Card
-            </button>
-          </div>
+        {/* Left: breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button
+            className="btn-icon"
+            onClick={() => navigate(`/w/${workspaceId}/dashboard`)}
+            title="Back to workspace dashboard"
+            style={{ padding: 6 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div style={{ width: 1, height: 18, background: 'rgb(var(--c-border))' }} />
+          <Breadcrumbs
+            items={[
+              { label: workspace?.name ?? 'Workspace', to: `/w/${workspaceId}/dashboard` },
+              { label: 'Projects', to: `/w/${workspaceId}/projects` },
+              { label: board.title },
+            ]}
+          />
         </div>
 
+        {/* Center: user avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {me?.avatarUrl && (
+            <img
+              src={me.avatarUrl}
+              referrerPolicy="no-referrer"
+              style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px solid rgb(var(--c-border-hi))', objectFit: 'cover' }}
+              title={me.name}
+            />
+          )}
+        </div>
+
+        {/* Right: actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Tooltip content="Undo">
+            <button className="btn-icon" onClick={() => undo(boardId)} aria-label="Undo">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+            </button>
+          </Tooltip>
+          <Tooltip content="Redo">
+            <button className="btn-icon" onClick={() => redo(boardId)} aria-label="Redo">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+            </button>
+          </Tooltip>
+          <div style={{ width: 1, height: 20, background: 'rgb(var(--c-border))' }} />
+          <button
+            className="btn btn-primary"
+            style={{ padding: '5px 12px', fontSize: 12 }}
+            onClick={() => {
+              const el = containerRef.current
+              if (!el) return
+              createCardAt(el.getBoundingClientRect().left + 220, el.getBoundingClientRect().top + 220)
+            }}
+            disabled={cards.length >= maxCards}
+            aria-label="Add card"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Card
+          </button>
+        </div>
+      </div>
+
+      {/* ── Canvas + RightPanel ── */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
         <div
           ref={containerRef}
-          onDragOver={(e) => {
-            e.preventDefault()
+          className="canvas-bg"
+          style={{
+            flex: 1, minWidth: 0,
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: spaceDown ? 'grab' : 'default',
           }}
+          onDragOver={(e) => e.preventDefault()}
           onDrop={async (e) => {
             e.preventDefault()
             if (!boardId) return
@@ -489,63 +498,58 @@ export function BoardCanvasPage() {
             const drop = { clientX: e.clientX, clientY: e.clientY }
             const base = worldPointFromEvent(drop)
 
-            // create up to remaining capacity
             const remaining = Math.max(0, maxCards - cards.length)
             const use = files.slice(0, remaining)
+            if (use.length === 0) return
 
-            for (let i = 0; i < use.length; i++) {
-              const f = use[i]
-              const mediaId = makeId('m')
-              await putMedia(mediaId, f)
+            try {
+              await maybeSimulateUpload(use)
 
-              const kind = f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'file'
-              const x = Math.round(base.x + i * 40)
-              const y = Math.round(base.y + i * 40)
-
-              withHistory(boardId, () => {
-                const newId = createCard(boardId, {
-                  title: f.name,
-                  description: '',
-                  x,
-                  y,
-                  w: 360,
-                  h: 260,
-                  z: Date.now(),
+              for (let i = 0; i < use.length; i++) {
+                const f = use[i]
+                const mediaId = makeId('m')
+                await putMedia(mediaId, f)
+                const kind: 'image' | 'video' | 'file' = f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'file'
+                const spawn = resolveSpawnPosition(Math.round(base.x + i * 40), Math.round(base.y + i * 40))
+                withHistory(boardId, () => {
+                  const newId = createCard(boardId, {
+                    title: f.name, description: '',
+                    x: spawn.x, y: spawn.y,
+                    w: 360, h: 260, z: Date.now(),
+                  })
+                  addMediaItem(newId, kind, { mediaId, name: f.name, mime: f.type || 'application/octet-stream' })
+                  setSelectedCardId(newId)
                 })
-                addMediaItem(newId, kind as any, { mediaId, name: f.name, mime: f.type || 'application/octet-stream' })
-                setSelectedCardId(newId)
-              })
+              }
+            } finally {
+              setUploadFeedback(null)
             }
           }}
-          className={
-            'relative flex-1 min-h-0 overflow-hidden bg-gradient-to-br from-bg to-black ' +
-            (spaceDown ? 'cursor-grab active:cursor-grabbing' : 'cursor-default')
-          }
           onPointerDown={(e) => {
-            // Space+drag pan only
-            if (spaceDown || e.button === 1) {
-              startPan(e)
-              return
-            }
+            if (spaceDown || e.button === 1) { startPan(e); return }
             setSelectedCardId(null)
+            setSelectedLinkId(null)
           }}
           onDoubleClick={onCanvasDoubleClick}
         >
+          {/* Transformed world */}
           <div
-            className="absolute left-0 top-0 origin-top-left"
-            style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
+            style={{
+              position: 'absolute', left: 0, top: 0,
+              transformOrigin: 'top left',
+              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
+            }}
           >
-            <div
-              className="absolute"
-              style={{
-                left: -20000,
-                top: -20000,
-                width: 40000,
-                height: 40000,
-                backgroundImage: 'radial-gradient(rgba(148,163,184,.12) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-              }}
-            />
+            {/* Dot grid layer */}
+            <div style={{
+              position: 'absolute',
+              left: -20000, top: -20000, width: 40000, height: 40000,
+              backgroundImage:
+                'radial-gradient(rgba(139,92,246,.1) 1px, transparent 1px),' +
+                'radial-gradient(rgba(34,211,238,.04) 1px, transparent 1px)',
+              backgroundSize: '32px 32px, 96px 96px',
+              pointerEvents: 'none',
+            }} />
 
             <LinkLayer
               cards={cardsById}
@@ -553,60 +557,155 @@ export function BoardCanvasPage() {
               selectedCardId={selectedCardId}
               selectedLinkId={selectedLinkId}
               onLinkClick={(id) => setSelectedLinkId(id)}
+              onDeleteLink={(linkId) => {
+                setSelectedLinkId(linkId)
+                setPendingDeleteLinkId(linkId)
+              }}
+              onUpdateLinkLabel={(linkId, label) => {
+                withHistory(boardId!, () => updateLink(linkId, { label }))
+              }}
             />
 
-            {/* temp link line */}
-            {linkTempLine && (
-              <svg
-                className="absolute"
-                style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}
-                viewBox="0 0 40000 40000"
-              >
-                <line
-                  x1={linkTempLine.a.x + 20000}
-                  y1={linkTempLine.a.y + 20000}
-                  x2={linkTempLine.b.x + 20000}
-                  y2={linkTempLine.b.y + 20000}
-                  stroke="rgba(168,85,247,.9)"
-                  strokeWidth={2.5}
-                />
-              </svg>
-            )}
+            {/* Temp drag-link bezier */}
+            {linkTempLine && (() => {
+              const { a, b } = linkTempLine
+              const dx = Math.abs(b.x - a.x) * 0.5 + 60
+              return (
+                <svg style={{ position: 'absolute', left: -20000, top: -20000, width: 40000, height: 40000, overflow: 'visible' }} viewBox="0 0 40000 40000">
+                  <path
+                    d={`M ${a.x + 20000} ${a.y + 20000} C ${a.x + 20000 + dx} ${a.y + 20000}, ${b.x + 20000 - dx} ${b.y + 20000}, ${b.x + 20000} ${b.y + 20000}`}
+                    fill="none"
+                    stroke="rgba(139,92,246,.8)"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    strokeLinecap="round"
+                  />
+                  <circle cx={b.x + 20000} cy={b.y + 20000} r={5} fill="rgba(139,92,246,.8)" />
+                </svg>
+              )
+            })()}
 
             {cards.map((c) => (
               <CardNode
                 key={c.id}
                 card={c}
+                boardId={boardId!}
                 selected={c.id === selectedCardId}
                 panMode={spaceDown}
-                preview={previews[c.id] ?? { primaryText: '', badgeItems: 0, badgeComments: 0, badgeLinks: 0, note: '', mediaThumbs: [], fileThumbs: [] }}
-                onSelect={() => setSelectedCardId(c.id)}
-                onPointerDownDrag={makeDragHandlers(c.id)}
-                onPointerDownResize={(corner) => makeResizeHandlers(c.id, corner)}
-                onStartLink={startLinkDrag(c.id)}
-                onToggle={(section) => {
-                  withHistory(boardId, () => {
-                    const cur = cardsById[c.id]
-                    if (!cur) return
-                    if (section === 'text') updateCard(c.id, { openText: !cur.openText })
-                    if (section === 'media') updateCard(c.id, { openMedia: !cur.openMedia })
-                    if (section === 'files') updateCard(c.id, { openFiles: !cur.openFiles })
+                onConvertToTask={(card) => {
+                  const sanitizedTitle = card.title.trim().toLowerCase() === 'new card' ? '' : card.title
+                  navigate(`/w/${workspaceId}/calendar`, {
+                    state: {
+                      draftSchedule: {
+                        boardId,
+                        linkedCardId: card.id,
+                        title: sanitizedTitle,
+                        note: [card.description, card.note].filter(Boolean).join('\n\n'),
+                      },
+                    },
                   })
                 }}
+                onDeselect={() => setSelectedCardId(null)}
+                onPointerDownDrag={makeDragHandlers(c.id)}
+                onPointerDownResize={() => makeResizeHandlers(c.id)}
+                onStartLink={startLinkDrag(c.id)}
+                onHeightChange={(h) => updateCard(c.id, { h })}
               />
             ))}
           </div>
 
-          <div className="absolute bottom-3 left-3 text-[11px] text-muted rounded border border-border bg-panel/50 px-2 py-1">
-            Pan: Space + drag • Zoom: Ctrl/Cmd + wheel • New card: double-click
+          {uploadFeedback && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 'var(--z-modal)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 24,
+                background: 'rgba(3, 6, 16, 0.28)',
+                backdropFilter: 'blur(2px)',
+                WebkitBackdropFilter: 'blur(2px)',
+              }}
+            >
+              <div
+                className="glass-panel"
+                style={{
+                  minWidth: 280,
+                  maxWidth: 360,
+                  padding: 22,
+                  borderRadius: 22,
+                  display: 'grid',
+                  gap: 10,
+                  justifyItems: 'center',
+                  textAlign: 'center',
+                }}
+              >
+                <div className="glass-loader__spinner" />
+                <div className="font-display" style={{ fontSize: 18, fontWeight: 700, color: 'rgb(var(--c-text))' }}>
+                  {uploadFeedback.label}
+                </div>
+                <div style={{ fontSize: 13, color: 'rgb(var(--c-muted))', lineHeight: 1.5 }}>
+                  Preparing {uploadFeedback.count} asset{uploadFeedback.count > 1 ? 's' : ''} for the board.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Bottom HUD ── */}
+          <div style={{
+            position: 'absolute', bottom: 14, left: 14,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 10px',
+            background: 'rgba(var(--c-panel), 0.85)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(var(--c-border),.6)',
+            borderRadius: 'var(--r-sm)',
+            fontSize: 11, color: 'rgb(var(--c-faint))',
+          }}>
+            <kbd style={{ fontFamily: 'inherit', background: 'rgba(255,255,255,.06)', padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>Space</kbd>
+            <span>+drag pan</span>
+            <span style={{ color: 'rgb(var(--c-border-hi))' }}>·</span>
+            <kbd style={{ fontFamily: 'inherit', background: 'rgba(255,255,255,.06)', padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>Ctrl</kbd>
+            <span>+scroll zoom</span>
+            <span style={{ color: 'rgb(var(--c-border-hi))' }}>·</span>
+            <span>double-click to add card</span>
           </div>
-          <div className="absolute bottom-3 right-3 text-[11px] text-muted rounded border border-border bg-panel/50 px-2 py-1">
-            Cards: {cards.length}/{maxCards}
+
+          {/* ── Card counter ── */}
+          <div style={{
+            position: 'absolute', bottom: 14, right: 14,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 10px',
+            background: 'rgba(var(--c-panel), 0.85)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(var(--c-border),.6)',
+            borderRadius: 'var(--r-sm)',
+            fontSize: 11, color: 'rgb(var(--c-faint))',
+          }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span style={{ color: cards.length >= maxCards ? 'rgb(var(--c-red))' : 'rgb(var(--c-muted))' }}>
+              {cards.length}
+            </span>
+            <span>/ {maxCards} cards</span>
           </div>
         </div>
       </div>
-
-      {selectedCardId && <RightPanel boardId={boardId} cardId={selectedCardId} onClose={() => setSelectedCardId(null)} />}
+      <ConfirmModal
+        open={!!pendingDeleteLinkId}
+        title="Remove board link?"
+        message="This connection will be removed from the canvas. The linked cards will stay in place, but the relationship line and label will be cleared."
+        confirmLabel="Remove Link"
+        tone="danger"
+        onClose={() => setPendingDeleteLinkId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteLinkId || !boardId) return
+          withHistory(boardId, () => deleteLink(pendingDeleteLinkId))
+          setSelectedLinkId(null)
+          setPendingDeleteLinkId(null)
+        }}
+      />
     </div>
   )
 }

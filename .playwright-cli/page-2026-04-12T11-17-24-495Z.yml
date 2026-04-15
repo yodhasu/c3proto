@@ -1,0 +1,131 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: S
+      - generic [ref=e8]:
+        - generic [ref=e9]: …
+        - generic [ref=e10]: Studio Workspace
+    - navigation [ref=e11]:
+      - generic [ref=e12]: Studio
+      - generic [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/dashboard
+          - img [ref=e16]
+          - generic [ref=e19]: Dashboard
+        - link "Projects soon" [ref=e20] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/projects
+          - img [ref=e22]
+          - generic [ref=e24]: Projects
+          - generic [ref=e25]: soon
+        - link "Calendar soon" [ref=e26] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/calendar
+          - img [ref=e28]
+          - generic [ref=e30]: Calendar
+          - generic [ref=e31]: soon
+        - link "Billing soon" [ref=e32] [cursor=pointer]:
+          - /url: /w/ws_b85f620ce86218_19d8156bd13/billing
+          - img [ref=e34]
+          - generic [ref=e36]: Billing
+          - generic [ref=e37]: soon
+    - generic [ref=e38]:
+      - link "Settings soon" [ref=e40] [cursor=pointer]:
+        - /url: /w/ws_b85f620ce86218_19d8156bd13/settings
+        - img [ref=e42]
+        - generic [ref=e45]: Settings
+        - generic [ref=e46]: soon
+      - generic [ref=e49]: Local · prototype
+  - main [ref=e51]:
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - heading "Production Schedule" [level=1] [ref=e55]
+          - button "Today" [ref=e57] [cursor=pointer]
+          - generic [ref=e58]:
+            - button [ref=e59] [cursor=pointer]:
+              - img [ref=e60]
+            - button [ref=e62] [cursor=pointer]:
+              - img [ref=e63]
+          - generic [ref=e65]: April 2026
+        - button "Add Task" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - text: Add Task
+      - generic [ref=e69]:
+        - generic [ref=e72]:
+          - generic [ref=e73]: 📅
+          - generic [ref=e74]: No production tasks scheduled
+          - generic [ref=e75]: Click "Add Task" to start planning your sessions.
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]: April 2026
+            - generic [ref=e79]:
+              - generic [ref=e80]: S
+              - generic [ref=e81]: M
+              - generic [ref=e82]: T
+              - generic [ref=e83]: W
+              - generic [ref=e84]: T
+              - generic [ref=e85]: F
+              - generic [ref=e86]: S
+              - generic [ref=e91] [cursor=pointer]: "1"
+              - generic [ref=e93] [cursor=pointer]: "2"
+              - generic [ref=e95] [cursor=pointer]: "3"
+              - generic [ref=e97] [cursor=pointer]: "4"
+              - generic [ref=e99] [cursor=pointer]: "5"
+              - generic [ref=e101] [cursor=pointer]: "6"
+              - generic [ref=e103] [cursor=pointer]: "7"
+              - generic [ref=e105] [cursor=pointer]: "8"
+              - generic [ref=e107] [cursor=pointer]: "9"
+              - generic [ref=e109] [cursor=pointer]: "10"
+              - generic [ref=e111] [cursor=pointer]: "11"
+              - generic [ref=e113] [cursor=pointer]: "12"
+              - generic [ref=e115] [cursor=pointer]: "13"
+              - generic [ref=e117] [cursor=pointer]: "14"
+              - generic [ref=e119] [cursor=pointer]: "15"
+              - generic [ref=e121] [cursor=pointer]: "16"
+              - generic [ref=e123] [cursor=pointer]: "17"
+              - generic [ref=e125] [cursor=pointer]: "18"
+              - generic [ref=e127] [cursor=pointer]: "19"
+              - generic [ref=e129] [cursor=pointer]: "20"
+              - generic [ref=e131] [cursor=pointer]: "21"
+              - generic [ref=e133] [cursor=pointer]: "22"
+              - generic [ref=e135] [cursor=pointer]: "23"
+              - generic [ref=e137] [cursor=pointer]: "24"
+              - generic [ref=e139] [cursor=pointer]: "25"
+              - generic [ref=e141] [cursor=pointer]: "26"
+              - generic [ref=e143] [cursor=pointer]: "27"
+              - generic [ref=e145] [cursor=pointer]: "28"
+              - generic [ref=e147] [cursor=pointer]: "29"
+              - generic [ref=e149] [cursor=pointer]: "30"
+          - generic [ref=e150]:
+            - heading "Timeline Overview" [level=5] [ref=e151]
+            - generic [ref=e153]: No active timelines
+      - generic [ref=e155]:
+        - heading "New Schedule Task" [level=2] [ref=e156]
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: Task Title
+            - textbox "e.g. Character modeling..." [active] [ref=e160]
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - generic [ref=e163]: Link to Project
+              - combobox [ref=e164]:
+                - option "None" [selected]
+            - generic [ref=e165]:
+              - generic [ref=e166]: Status
+              - combobox [ref=e167]:
+                - option "Production" [selected]
+                - option "Review"
+                - option "Finalizing"
+                - option "Meeting"
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]: Start Date
+              - textbox [ref=e171]: 2026-04-12
+            - generic [ref=e172]:
+              - generic [ref=e173]: End Date
+              - textbox [ref=e174]: 2026-04-12
+          - generic [ref=e175]:
+            - generic [ref=e176]: Production Notes
+            - textbox "Task details and requirements..." [ref=e177]
+          - generic [ref=e178]:
+            - button "Cancel" [ref=e179] [cursor=pointer]
+            - button "Create Task" [disabled] [ref=e180]
